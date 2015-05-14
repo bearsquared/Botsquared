@@ -8,8 +8,10 @@ public class Channel {
     private int globalDelay = 5;
     private long globalTimeout = 0L;
     private boolean moderate = false;
-    private ArrayList<String> modList = new ArrayList<>();
-    private String subMessage;
+    private String subMessage = "(not set)";
+    private transient ArrayList<String> modList = new ArrayList<>();
+    private transient ArrayList<String> superList = new ArrayList<>();
+    private transient Poll poll = new Poll();
     
     public Channel() {
         
@@ -39,12 +41,20 @@ public class Channel {
         return moderate;
     }
     
+    public String getSubMessage() {
+        return subMessage;
+    }
+    
     public ArrayList<String> getModList() {
         return modList;
     }
     
-    public String getSubMessage() {
-        return subMessage;
+    public ArrayList<String> getSuperList() {
+        return superList;
+    }
+    
+    public Poll getPoll() {
+        return poll;
     }
     
     public void setName(String name) {
@@ -75,7 +85,19 @@ public class Channel {
         this.subMessage = subMessage;
     }
     
+    public void setSuperList(ArrayList<String> superList) {
+        this.superList = superList;
+    }
+    
+    public void setPoll(Poll poll) {
+        this.poll = poll;
+    }
+    
     public void clearModList() {
         modList.clear();
+    }
+    
+    public void clearSuperList() {
+        superList.clear();
     }
 }
