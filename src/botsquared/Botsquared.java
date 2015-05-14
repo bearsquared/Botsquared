@@ -71,6 +71,7 @@ public class Botsquared extends PircBot {
                         Type channelType = new TypeToken<Channel>() {}.getType();
                         channels.put(channel, gson.fromJson(br2, Channel.class));
                         channels.get(channel).clearModList();
+                        channels.get(channel).clearSuperList();
                     }
                 }
                 
@@ -123,6 +124,19 @@ public class Botsquared extends PircBot {
          */
     @Override
 	public void onMessage(String channel, String sender, String login, String hostname, String message) {
+            
+            //Subscriber/Turbo/Staff check
+            if (sender.equalsIgnoreCase("jtv")) {
+                String[] words = message.split(" ");
+                if (words[0].equalsIgnoreCase("SPECIALUSER")) {
+                    if (words[2].equalsIgnoreCase("subscriber") || words[2].equalsIgnoreCase("turbo") || words[2].equalsIgnoreCase("staff")) {
+                        if (!channels.get(channel).getSuperList().contains(words[1])) {
+                            channels.get(channel).getSuperList().add(words[1]);
+                        }
+                        buildJson(channel);
+                    }
+                }
+            }
             
             if (message.startsWith("!")) { // Messages that start with "!" are assumed to be a command.
                 CommandList thisChannel = new CommandList();
@@ -185,11 +199,20 @@ public class Botsquared extends PircBot {
                         else if (c.getName().equalsIgnoreCase("!permit")) {
                             handlePermit(channel, message);
                         }
+                        else if (c.getName().equalsIgnoreCase("!poll")) {
+                            handlePoll(channel, message);
+                        }
+                        else if (c.getName().equalsIgnoreCase("!subnotify")) {
+                            handleSubNotify(channel, message);
+                        }
+                        else if (c.getName().equalsIgnoreCase("!vote")) {
+                            handleVote(channel, sender, message);
+                        }
                     }
                 }
             }
             // If moderate is true then it will also check messages sent by normal users for URLs.
-            else if (isLink(message) && !isOp(channel, sender) && channels.get(channel).getModerate()) {
+            else if (isLink(message) && !isOp(channel, sender) && channels.get(channel).getModerate() && !channels.get(channel).getSuperList().contains(sender)) {
                 if (whitelist.contains(sender)) {
                     whitelist.remove(sender);
                 }
@@ -203,7 +226,12 @@ public class Botsquared extends PircBot {
             else if (sender.equalsIgnoreCase("twitchnotify")) {
                 String[] words = message.split(" ");
                 if (words[2].equalsIgnoreCase("subscribed!")) {
-                    sendMessage(channel, "Welcome to The Splash Zone " + sender + "!");
+                    String notify = channels.get(channel).getSubMessage();
+                    notify = notify.replaceAll("<user>", words[0]);
+                    sendMessage(channel, notify);
+                }
+                else if (words[1].equalsIgnoreCase("subscribed")) {
+                    sendMessage(channel, "Thanks " + words[0] + " for subscribing for " + words[3] + " months in a row!");
                 }
             }
 	}
@@ -406,6 +434,64 @@ public class Botsquared extends PircBot {
                 else {
                     sendMessage(channel, "I couldn't find the name of a user. Use the pattern \"!permit [name of user]\" to allow them to post one link.");
                 }
+            }
+        }
+        
+        public void handlePoll(String channel, String message) {
+            String call = "!poll ";
+            String parameter = message.replace(call, "").trim();
+            
+            if (parameter.startsWith("open")) {
+                parameter = parameter.replace("open", "").trim();
+                if (parameter.contains(" ")) {
+                    String[] options = parameter.split("\\|");
+                    ArrayList<PollOption> poll = new ArrayList<>();
+                    for (String option : options) {
+                        poll.add(new PollOption(option.trim()));
+                    }
+                    sendMessage(channel, channels.get(channel).getPoll().open(poll));
+                    buildJson(channel);
+                }
+                else {
+                    sendMessage(channel, "Sorry, I didn't find any options for your poll.");
+                }
+            }
+            else if (parameter.startsWith("close")) {
+                sendMessage(channel, channels.get(channel).getPoll().close());
+                buildJson(channel);
+            }
+            else if (parameter.startsWith("reset")) {
+                sendMessage(channel, channels.get(channel).getPoll().reset());
+                buildJson(channel);
+            }
+            else if (parameter.startsWith("results")) {
+                sendMessage(channel, channels.get(channel).getPoll().results());
+                buildJson(channel);
+            }
+        }
+        
+        public void handleSubNotify(String channel, String message) {
+            String call = "!subnotify ";
+            String parameter = message.replace(call, "").trim();
+            
+            if(!parameter.isEmpty() && parameter.length() > 0) {
+                channels.get(channel).setSubMessage(parameter);
+                buildJson(channel);
+                sendMessage(channel, "You have set the subscriber notification message successfully.");
+            }
+        }
+        
+        public void handleVote(String channel, String sender, String message) throws IllegalArgumentException {
+            String call = "!vote ";
+            String parameter = message.replace(call, "").trim();
+            
+            try {
+                if(!parameter.isEmpty() && parameter.length() > 0) {
+                    channels.get(channel).getPoll().vote(sender, Integer.parseInt(parameter));
+                }
+            }
+            catch (NumberFormatException e) {
+                
             }
         }
         
