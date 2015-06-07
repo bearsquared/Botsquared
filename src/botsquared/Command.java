@@ -5,7 +5,7 @@ package botsquared;
  * 
  */
 
-public class Command {
+public class Command implements Cloneable {
     
     /**
     * Level defines who can delete, or edit a command, and what fields of that command can be edited.
@@ -133,45 +133,40 @@ public class Command {
         }
     }
     
-    /**
-    * Visibility affects the list a command belongs to.
-    * 
-    * PUBLIC this is included when !list is called.
-    * MOD this is included when !list mod is called.
-    * NONE this is not included in any command list.
-    * 
-    * The Visibility DEFAULT is assigned to a command without one explicitly assigned.
-    */
-    public enum Visibility {
-        PUBLIC, MOD, NONE;
-        
-        public static boolean contains(String s) {
-            for (Visibility v : Visibility.values()) {
-                if (v.name().equals(s)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        
-        public static String toList() {
-            String s = "";
-            for (Visibility v : Visibility.values()) {
-                s += " | " + v.name();
-            }
-            s = s.replaceFirst(" \\u007c ", "[ ") + " ]";
-            return s;
-        }
-    }
-    
     private String name; //unique command name
     private Level level = Level.OP; //who can edit or remove this command | *OP, OWNER, NATIVE, FUNCTIONAL, LIST
     private Access access = Access.ALL; //who can call command | *ALL, OP, OWNER
-    private Visibility visibility = Visibility.PUBLIC; //which command list this belongs to | *DEFAULT, OP, NONE
     private boolean global = true; //determines if command acknowledges global timeout | *true, false
     private int delay = 30; //coeffecient that determines the interval at which this command may be called | integer 0-3600, *30
-    private long lastUsed = 0L; //stores system time the command was last used
+    private transient long lastUsed = 0L; //stores system time the command was last used
     private String output; //string that defines what calling the command does
+    
+    public Command() {
+        
+    }
+    
+    public Command(Command c) {
+        this.name = c.getName();
+        this.level = c.getLevel();
+        this.access = c.getAccess();
+        this.global = c.getGlobal();
+        this.delay = c.getDelay();
+        this.output = c.getOutput();
+    }
+    
+    public boolean equals(Command c) {
+        return this.name.equals(c.getName()) &&
+                this.level == c.getLevel() &&
+                this.access == c.getAccess() &&
+                this.global == c.getGlobal() &&
+                this.delay == c.getDelay() &&
+                this.output.equals(c.getOutput());
+    }
+    
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        return super.clone();
+    }
     
     /**
      * Returns the name of a command Command names must be unique.
@@ -187,10 +182,6 @@ public class Command {
     
     public Access getAccess() {
         return access;
-    }
-    
-    public Visibility getVisibility() {
-        return visibility;
     }
     
     public boolean getGlobal() {
@@ -234,14 +225,6 @@ public class Command {
         access = Access.valueOf(e.toUpperCase());
     }
     
-    public void setVisibility(Visibility e) throws IllegalArgumentException {
-        visibility = e;
-    }
-    
-    public void setVisibility(String e) throws IllegalArgumentException {
-        visibility = Visibility.valueOf(e.toUpperCase());
-    }
-    
     public void setGlobal(boolean b) throws IllegalArgumentException {
         global = b;
     }
@@ -280,7 +263,7 @@ public class Command {
     @Override
     public String toString() {
         return name + level + " "
-                + access + " " + visibility + " " + global + " "
+                + access + " " + global + " "
                 + delay + " " + lastUsed + " " + output;
     }
     

@@ -6,7 +6,7 @@ public class Channel {
     private String name;
     private CommandList list = new CommandList();
     private int globalDelay = 5;
-    private long globalTimeout = 0L;
+    private transient long globalTimeout = 0L;
     private boolean moderate = false;
     private String subMessage = "(not set)";
     private transient ArrayList<String> modList = new ArrayList<>();

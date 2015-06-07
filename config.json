@@ -63,8 +63,17 @@
             "delay": "0",
             "output": "This command will allow a user to post one link to chat. Type \"!permit [name of user]\" to give them permission."
         },
+        "!poll": {
+            "name": "!poll",
+            "level": "FUNCTIONAL",
+            "access": "OP",
+            "visibility": "MOD",
+            "global": "false",
+            "delay": "0",
+            "output": "This command allows you to create a poll for your viewers in the chat. Use \"!poll open <option 1> | <option 2> | ...\" to open a poll, and \"!poll close\" to close the poll and see the results."
+        },
         "!subnotify": {
-            "name": "!command",
+            "name": "!subnotify",
             "level": "NATIVE",
             "access": "OWNER",
             "visibility": "MOD",
@@ -80,6 +89,15 @@
             "global": "true",
             "delay": "30",
             "output": " has been streaming for "
+        },
+        "!vote": {
+            "name": "!vote",
+            "level": "COMPLEX",
+            "access": "ALL",
+            "visibility": "PUBLIC",
+            "global": "false",
+            "delay": "0",
+            "output": ""
         }
     }
 }
