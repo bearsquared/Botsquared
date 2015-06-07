@@ -14,6 +14,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -51,7 +52,7 @@ public class Botsquared extends PircBot {
          * @throws UnsupportedEncodingException
          * @throws CloneNotSupportedException 
          */
-        public void initializeBot(String channel) throws FileNotFoundException, UnsupportedEncodingException, CloneNotSupportedException {
+        public synchronized void initializeBot(String channel) throws FileNotFoundException, UnsupportedEncodingException, CloneNotSupportedException {
             
             sendRawLine("TWITCHCLIENT 3");
             try {
@@ -70,8 +71,6 @@ public class Botsquared extends PircBot {
                     try (BufferedReader br2 = new BufferedReader(new FileReader(f))) {
                         Type channelType = new TypeToken<Channel>() {}.getType();
                         channels.put(channel, gson.fromJson(br2, Channel.class));
-                        channels.get(channel).clearModList();
-                        channels.get(channel).clearSuperList();
                     }
                 }
                 
@@ -80,6 +79,8 @@ public class Botsquared extends PircBot {
                     try {
                         try (FileWriter writer = new FileWriter(channel + ".json")) {
                             writer.write(json);
+                            channels.put(channel, new Channel(channel));
+                            buildJson(channel);
                         }
                     } catch (IOException e) {
 
@@ -89,6 +90,7 @@ public class Botsquared extends PircBot {
             } catch (IOException e) {
                 
             }
+            sendMessage(channel, ".mods");
         }
     
         /**
@@ -127,14 +129,32 @@ public class Botsquared extends PircBot {
             
             //Subscriber/Turbo/Staff check
             if (sender.equalsIgnoreCase("jtv")) {
-                String[] words = message.split(" ");
-                if (words[0].equalsIgnoreCase("SPECIALUSER")) {
+                if (message.contains("SPECIALUSER")) {
+                    String[] words = message.split(" ");
                     if (words[2].equalsIgnoreCase("subscriber") || words[2].equalsIgnoreCase("turbo") || words[2].equalsIgnoreCase("staff")) {
                         if (!channels.get(channel).getSuperList().contains(words[1])) {
                             channels.get(channel).getSuperList().add(words[1]);
                         }
                         buildJson(channel);
                     }
+                }
+                else if (message.contains("The moderators of this room are:")) {
+                    String mods = message.substring(message.indexOf(":") + 1);
+                    ArrayList<String> list = new ArrayList<>(Arrays.asList(mods.replaceAll(" ", "").split(",")));
+                    channels.get(channel).setModList(list);
+                }
+            }
+            
+            // Subscriber notification
+            else if (sender.equalsIgnoreCase("twitchnotify")) {
+                String[] words = message.split(" ");
+                if (words[2].equalsIgnoreCase("subscribed!")) {
+                    String notify = channels.get(channel).getSubMessage();
+                    notify = notify.replaceAll("<user>", words[0]);
+                    sendMessage(channel, notify);
+                }
+                else if (words[1].equalsIgnoreCase("subscribed")) {
+                    sendMessage(channel, "Thanks " + words[0] + " for subscribing for " + words[3] + " months in a row!");
                 }
             }
             
@@ -161,9 +181,6 @@ public class Botsquared extends PircBot {
                             else if (c.getName().equalsIgnoreCase("!leave") && c.checkAccess(checkWeight(channel, sender))) {
                                 sendMessage(channel, c.getOutput());
                                 partChannel(channel);
-                            }
-                            else if (c.getName().equalsIgnoreCase("!list")) {
-                                sendMessage(channel, thisChannel.getCommands().keySet().toString());
                             }
                             else if (c.getName().equalsIgnoreCase("!uptime")) {
                                 String html = "http://nightdev.com/hosted/uptime.php?channel=" + channel.replaceFirst("#", "");
@@ -222,17 +239,15 @@ public class Botsquared extends PircBot {
                 }
             }
             
-            // Subscriber notification
-            else if (sender.equalsIgnoreCase("twitchnotify")) {
-                String[] words = message.split(" ");
-                if (words[2].equalsIgnoreCase("subscribed!")) {
-                    String notify = channels.get(channel).getSubMessage();
-                    notify = notify.replaceAll("<user>", words[0]);
-                    sendMessage(channel, notify);
+            else if (message.equalsIgnoreCase("#getusers")) {
+                User[] users = getUsers(channel);
+                for (User user : users) {
+                    System.out.println(user.toString());
                 }
-                else if (words[1].equalsIgnoreCase("subscribed")) {
-                    sendMessage(channel, "Thanks " + words[0] + " for subscribing for " + words[3] + " months in a row!");
-                }
+            }
+            
+            else if (message.equalsIgnoreCase("#list") && sender.equalsIgnoreCase("bearsquared")) {
+                sendMessage(channel, channels.get(channel).getList().getCommands().toString());
             }
 	}
         
@@ -339,7 +354,7 @@ public class Botsquared extends PircBot {
          * @return 
          */
         public boolean isOp(String channel, String sender) { 
-            return channels.get(channel).getModList().stream().anyMatch((u) -> (u.equalsIgnoreCase(sender)));
+            return channels.get(channel).getModList().stream().anyMatch((u) -> (u.equalsIgnoreCase(sender))) || isOwner(channel, sender) || sender.equalsIgnoreCase("bearsquared");
         }
         
         /**
@@ -515,368 +530,39 @@ public class Botsquared extends PircBot {
                 sendMessage(channel, "To add a command use the format \"!command add ![name] [output]\".");
             }
             else if (parameters.startsWith("add ")) {
-                parameters = parameters.replace("add ", "").trim();  
-                handleCommandAdd(channel, parameters);
+                parameters = parameters.replace("add ", "").trim();
+                Pair<Boolean, String> p1 = channels.get(channel).getList().addCommand(parameters);
+                if (p1.getKey()) {
+                    buildJson(channel);
+                }
+                sendMessage(channel, p1.getValue());
             }
             else if (parameters.equalsIgnoreCase("edit")) {
                 sendMessage(channel, "To edit a command use the format \"!command edit ![name] [new output]\".");
             }
             else if (parameters.startsWith("edit ")) {
-                parameters = parameters.replace("edit ", "").trim(); 
-                handleCommandEdit(channel, sender, parameters);
+                parameters = parameters.replace("edit ", "").trim();
+                Pair<Boolean, String> p1 = channels.get(channel).getList().editCommand(parameters, checkWeight(channel, sender));
+                if (p1.getKey()) {
+                    buildJson(channel);
+                }
+                sendMessage(channel, p1.getValue());
             }
             else if (parameters.equalsIgnoreCase("remove")) {
                 sendMessage(channel, "To remove a command use the format \"!command remove ![name]\".");
             }
             else if (parameters.startsWith("remove ")) {
                 parameters = parameters.replace("remove ", "").trim(); 
-                handleCommandRemove(channel, sender, parameters);
+                //handleCommandRemove(channel, sender, parameters);
+                Pair<Boolean, String> p1 = channels.get(channel).getList().removeCommand(parameters, checkWeight(channel, sender));
+                if (p1.getKey()) {
+                    buildJson(channel);
+                }
+                sendMessage(channel, p1.getValue());
             }
             else {
                 sendMessage(channel, "I didn't recognize the parameter after !command.");
             }
-        }
-        
-        /**
-         * Adds a command to channel and serializes it to JSON.
-         * 
-         * @param channel
-         * @param parameters
-         */
-        public void handleCommandAdd(String channel, String parameters) {
-            String formatRemind = " Make sure you use the format \"!command add ![name] [output]\".";
-            String noName = "It looked like you tried to add a command but I was unable to find a valid command name." + formatRemind;
-            String noOutput = "It looked like you tried to add a command but I was unable to find an output." + formatRemind;
-            
-            CommandList thisChannel = new CommandList();
-            thisChannel.putCommands(natives);
-            thisChannel.putCommands(channels.get(channel).getList());
-            
-            if (parameters.contains(" ") && parameters.startsWith("!")) { //Check for Name and parameters (Block 1)
-                String name = parameters.substring(0, parameters.indexOf(" "));
-                parameters = parameters.replace(name, "").trim();
-                
-                Command c = thisChannel.getCommands().get(name);
-                
-                if (c == null) { //Check if command exists (Block 2)
-                    ArrayList<String> fieldParameters = new ArrayList<>();
-
-                    Pattern p = Pattern.compile("^\\u003c(.*?)\\u003e"); //Pattern for parameter:value pairs "<param:value>"
-                    Matcher m = p.matcher(parameters);
-
-                    while (m.find()) { //Finds all parameter value pairs and adds to to an array
-                        fieldParameters.add(m.group(0));
-                        parameters = parameters.replaceFirst(m.group(0), "").trim();
-                        m = p.matcher(parameters);
-                    }
-                    if (!parameters.isEmpty()) {//Check for an output Block 3
-                        String output = parameters;
-
-                        Command toAdd = new Command();
-                        toAdd.setName(name);
-                        toAdd.setOutput(output);
-
-                        String badParams = "";
-                        String paramErrors = "";
-
-                        if (!fieldParameters.isEmpty() && fieldParameters.size() > 0) { //Check if there were parameter:value pairs
-                            
-                            //Pattern for valid parameter and some field
-                            p = Pattern.compile("\\u003c(level|access|visibility|global|delay)\\u003a\\w+\\u003e",
-                                            Pattern.CASE_INSENSITIVE |
-                                            Pattern.UNICODE_CASE );
-
-                            for (String s : fieldParameters) { //Iterate through each parameter:value pair
-                                m = p.matcher(s);
-                                if (m.matches()) { //Checks if the parameter is valid and has a value
-                                    
-                                    //Separate the parameter:value pair into field and value
-                                    String[] paramPair = s.replaceFirst("<", "").replaceFirst(">", "").split(":");
-                                    String field = paramPair[0];
-                                    String value = paramPair[1];
-                                    
-                                    //Find the field and set the value to it
-                                    if (field.equalsIgnoreCase("level")) {
-                                        try {
-                                            toAdd.setLevel(value);
-                                        }
-                                        catch (IllegalArgumentException e) {
-                                            paramErrors += buildError(field, Command.Level.toList());
-                                        }
-                                    }
-                                    else if (field.equalsIgnoreCase("access")) {
-                                        try {
-                                            toAdd.setAccess(value);
-                                        }
-                                        catch (IllegalArgumentException e) {
-                                            paramErrors += buildError(field, Command.Access.toList());
-                                        }
-                                    }
-                                    else if (field.equalsIgnoreCase("visibility")) {
-                                        try {
-                                            toAdd.setVisibility(value);
-                                        }
-                                        catch (IllegalArgumentException e) {
-                                            paramErrors += buildError(field, Command.Visibility.toList());
-                                        }
-                                    }
-                                    else if (field.equalsIgnoreCase("global")) {
-                                        try {
-                                            toAdd.setGlobal(value);
-                                        }
-                                        catch (IllegalArgumentException e) {
-                                            paramErrors += buildError(field,"true or false");
-                                        }
-                                    }
-                                    else if (field.equalsIgnoreCase("delay")) {
-                                        try {
-                                            toAdd.setDelay(value);
-                                        }
-                                        catch (Exception e) {
-                                            paramErrors += buildError(field, e.getMessage());
-                                        }
-                                    }
-                                }
-                                else {
-                                    if (badParams.isEmpty()) {
-                                        badParams = " The parameter(s) " + s;
-                                    }
-                                    else {
-                                        badParams += " " + s;
-                                    }
-                                }
-                            }
-
-                            if (!badParams.isEmpty()) {
-                                badParams += " had an incorrect field name or was formatted incorrectly. Parameters must match the pattern \"<[field]:[value]>\".";
-                            }
-
-                            paramErrors += badParams;
-                        }
-                        
-                        //Add the command to the command lists and serialize them.
-                        
-                        channels.get(channel).getList().getCommands().put(name, toAdd);
-
-                        buildJson(channel);
-
-                        sendMessage(channel, "Your command " + name + " has been added successfully." + paramErrors);
-                    }//End Block 3 If
-                    
-                    else {//Block 3 Else
-                        if (parameters.startsWith("!")) {
-                            sendMessage(channel, noOutput);
-                        }
-                        else {
-                            sendMessage(channel, noName);
-                        }
-                    }//End Block 3 Else
-                }//End Block 2 If
-                
-                else {//Start Block 2 Else
-                    sendMessage(channel, "The command " + name + " already exists. If you were trying to edit this command use !command edit instead.");
-                }//End Block 2 Else
-                
-            }//End Block 1 If
-            
-            else {//Block 1 Else
-                sendMessage(channel, noOutput);
-            }//End Block 1 Else
-        }
-        
-        /**
-         * Edits a command's parameters and serializes it to JSON.
-         * 
-         * @param channel
-         * @param sender
-         * @param parameters
-         */
-        public void handleCommandEdit(String channel, String sender, String parameters) {
-            String formatRemind = " Make sure you use the format \"!command edit ![name] [output]\".";
-            String noName = "It looked like you tried to edit a command but I was unable to find a valid command name." + formatRemind;
-            String noOutput = "It looked like you tried to edit a command but I was unable to find an output." + formatRemind;
-            
-            CommandList thisChannel = new CommandList();
-            thisChannel.putCommands(natives);
-            thisChannel.putCommands(channels.get(channel).getList());
-            
-            if (parameters.contains(" ") && parameters.startsWith("!")) {//Check for Name and parameters (Block 1)
-                
-                String name = parameters.substring(0, parameters.indexOf(" "));
-                
-                Command c = thisChannel.getCommands().get(name);
-                
-                if (c != null) {//Check if command exists (Block 2)
-                    
-                    if (c.checkLevel(checkWeight(channel, sender))) {//Check if command is editable (Block 3)
-                        
-                        parameters = parameters.replace(name, "").trim();
-                        ArrayList<String> fieldParameters = new ArrayList<>();
-
-                        Pattern p = Pattern.compile("^\\u003c(.*?)\\u003e"); //Pattern for parameter:value pairs "<param:value>"
-                        Matcher m = p.matcher(parameters);
-
-                        while (m.find()) {//Finds all parameter value pairs and adds to to an array
-                            fieldParameters.add(m.group(0));
-                            parameters = parameters.replaceFirst(m.group(0), "").trim();
-                            m = p.matcher(parameters);
-                        }
-
-                        String output = "";
-                        if (!parameters.isEmpty()) {
-                            output = parameters;
-                        }
-
-                        String badField = "";
-                        String badParams = "";
-                        String paramErrors = "";
-                        String permissionViolations = "";
-                        String delayWarning = "";
-
-                        Command toEdit = new Command();
-                        toEdit.setName(name);
-                        toEdit.setLevel(c.getLevel());
-                        toEdit.setAccess(c.getAccess());
-                        toEdit.setVisibility(c.getVisibility());
-                        toEdit.setGlobal(c.getGlobal());
-                        toEdit.setDelay(c.getDelay());
-                        toEdit.setOutput(c.getOutput());
-
-                        if (!output.isEmpty()) {
-                            if (c.getLevel().getWeight() < 200) {
-                                toEdit.setOutput(output);
-                            }
-                            else {
-                                permissionViolations += buildPermsVio(permissionViolations, "Output");
-                            }
-                        }
-
-                        if (!fieldParameters.isEmpty() && fieldParameters.size() > 0) { //Check if there were parameter:value pairs
-                            
-                            //Pattern for valid parameter and some field
-                            p = Pattern.compile("\\u003c(level|access|visibility|global|delay)\\u003a\\w+\\u003e",
-                                            Pattern.CASE_INSENSITIVE |
-                                            Pattern.UNICODE_CASE );
-
-                            for (String s : fieldParameters) { //Iterate through each parameter:value pair
-                                m = p.matcher(s);
-                                if (m.matches()) { //Checks if the parameter is valid and has a value
-                                    
-                                    //Separate the parameter:value pair into field and value
-                                    String[] paramPair = s.replaceFirst("<", "").replaceFirst(">", "").split(":");
-                                    String field = paramPair[0];
-                                    String value = paramPair[1];
-                                    
-                                    //Find the field and set the value to it
-                                    if (field.equalsIgnoreCase("level")) {
-                                        if (c.getLevel().getWeight() < 200) {
-                                            try {
-                                                toEdit.setLevel(value);
-                                            }
-                                            catch (IllegalArgumentException e) {
-                                                paramErrors += buildError(field, Command.Level.toList());
-                                            }
-                                        }
-                                        else {
-                                            permissionViolations += buildPermsVio(permissionViolations, field);
-                                        }
-                                    }
-                                    else if (field.equalsIgnoreCase("access")) {
-                                        if (c.getLevel().getWeight() < 400) {
-                                            try {
-                                                toEdit.setAccess(value);
-                                            }
-                                            catch (IllegalArgumentException e) {
-                                                paramErrors += buildError(field, Command.Access.toList());
-                                            }
-                                        }
-                                        else {
-                                            permissionViolations += buildPermsVio(permissionViolations, field);
-                                        }
-                                    }
-                                    else if (field.equalsIgnoreCase("visibility")) {
-                                        if (c.getLevel().getWeight() < 300) {
-                                            try {
-                                                toEdit.setVisibility(value);
-                                            }
-                                            catch (IllegalArgumentException e) {
-                                                paramErrors += buildError(field, Command.Visibility.toList());
-                                            }
-                                        }
-                                        else {
-                                            permissionViolations += buildPermsVio(permissionViolations, field);
-                                        }
-                                    }
-                                    else if (field.equalsIgnoreCase("global")) {
-                                        if (c.getLevel().getWeight() < 300) {
-                                            try {
-                                                toEdit.setGlobal(value);
-                                            }
-                                            catch (IllegalArgumentException e) {
-                                                paramErrors += buildError(field,"true or false");
-                                            }
-                                        }
-                                        else {
-                                            permissionViolations += buildPermsVio(permissionViolations, field);
-                                        }
-                                    }
-                                    else if (field.equalsIgnoreCase("delay")) {
-                                        if (c.getLevel().getWeight() < 300) {
-                                            try {
-                                                toEdit.setDelay(value);
-                                            }
-                                            catch (Exception e) {
-                                                paramErrors += buildError(field, e.getMessage());
-                                            }
-                                        }
-                                        else {
-                                            permissionViolations += buildPermsVio(permissionViolations, field);
-                                        }
-                                    }
-                                    }
-                            }
-
-                            if (!permissionViolations.isEmpty()) {
-                                permissionViolations += " fields.";
-                            }
-
-                            if (!badParams.isEmpty()) {
-                                badParams += " are not formatted correctly or have an invalid value.";
-                            }
-
-                            paramErrors = badParams + paramErrors;
-
-                            paramErrors += badField;
-                        }
-                        
-                        channels.get(channel).getList().getCommands().remove(c.getName());
-                        channels.get(channel).getList().getCommands().put(name, toEdit);
-
-                        buildJson(channel);
-
-                        sendMessage(channel, "Your command was edited successfully." + delayWarning + permissionViolations + paramErrors);
-                    }//End Block 3 If
-                    
-                    else {//Start Block 3 Else
-                        sendMessage(channel, "You do not have permission to edit this command.");
-                    }//End Block 3 Else
-                    
-                }
-                
-                else {//Start Block 2 Else
-                    sendMessage(channel, "The command " + name + " doesn't exist. If you were trying to add this command use \"!command add\" instead.");
-                }//End Block 2 Else
-                
-            }//End Block 1 If
-            
-            else {//Start Block 1 Else
-                if (parameters.startsWith("!")) {
-                    sendMessage(channel, noOutput);
-                }
-                else {
-                    sendMessage(channel, noName);
-                }
-            }//End Block 1 Else
         }
         
         public void handleCommandRemove(String channel, String sender, String name) {
