@@ -17,6 +17,8 @@ import org.javatuples.Unit;
  * @author Graham
  */
 public class Util {
+    public static final String url = "\\b(?:((?:https?|ftp|file):\\/\\/www\\.)|((?:https?|ftp|file):\\/\\/(?!www.))|(www\\.))[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%?=~_|]";
+    
     public static final String command = "(^!\\w+)\\s+(<.*?>)?\\s*(\\b.*)";
     public static final String complexCom = "(^!\\w+)\\s+(<.*?>)\\s*(\\b.*)";
     public static final String simpCom = "(^!\\w+)\\s+(.+)";
@@ -28,6 +30,8 @@ public class Util {
     public static final String globalP = "(?:<global:)(true|false)>";
     public static final String delayP = "(?:<delay:)([0-9]+)>";
     
+    public static final Pattern pURL = Pattern.compile(url);
+    
     public static final Pattern pCommand = Pattern.compile(command);
     public static final Pattern pComplex = Pattern.compile(complexCom);
     public static final Pattern pSimple = Pattern.compile(simpCom);
@@ -38,6 +42,25 @@ public class Util {
     public static final Pattern pAccess = Pattern.compile(accessP, Pattern.CASE_INSENSITIVE);
     public static final Pattern pGlobal = Pattern.compile(globalP, Pattern.CASE_INSENSITIVE);
     public static final Pattern pDelay = Pattern.compile(delayP);
+        
+    /**
+     * Checks if a message contains a URL
+     * 
+     * @param message
+     * @return 
+     */
+    public static boolean isLink(String message) {
+        String [] parts = message.split("\\s");
+        for( String item : parts ) try {
+            Matcher matcher = pURL.matcher(item);
+            if(matcher.matches()) {
+                return true; 
+            }
+        } catch (RuntimeException e) {
+
+        }
+        return false;
+    }
         
     public static Tuple splitMessage(String message) {
         Matcher mAER = pAER.matcher(message);

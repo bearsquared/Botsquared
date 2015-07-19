@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import static jdk.nashorn.internal.objects.NativeString.toLowerCase;
 import org.javatuples.*;
 import org.joda.time.DateTime;
@@ -160,8 +159,7 @@ public class Botsquared extends PircBot {
                 }
             }
             
-            Pattern p = Pattern.compile("^!\\w+$");
-            Matcher m = p.matcher(message);
+            Matcher m = Util.pExactName.matcher(message);
             
             //if (message.startsWith("!")) { // Messages that start with "!" are assumed to be a command.
             if (m.matches()) {
@@ -223,20 +221,13 @@ public class Botsquared extends PircBot {
                 }
             }
             // If moderate is true then it will also check messages sent by normal users for URLs.
-            else if (isLink(message) && channels.get(channel).getModerate() && checkWeight(channel, sender) < Command.Access.SUB.getWeight()) {
-                if (channels.get(channel).getPermitList().contains(toLowerCase(sender))) {
+            else if (Util.isLink(message) && channels.get(channel).getModerate() && checkWeight(channel, sender) < Command.Access.SUB.getWeight()) {
+                if (channels.get(channel).getPermitList().contains(sender.toLowerCase())) {
                     channels.get(channel).getPermitList().remove(sender);
                 }
                 else {
                     sendMessage(channel, "/timeout " + sender + " 1");//Timeout sender for 1 second to delete message
                     sendMessage(channel, "Please ask permissions before posting links " + sender + ".");
-                }
-            }
-            
-            else if (message.equalsIgnoreCase("#getusers")) {
-                User[] users = getUsers(channel);
-                for (User user : users) {
-                    System.out.println(user.toString());
                 }
             }
 	}
@@ -296,28 +287,6 @@ public class Botsquared extends PircBot {
                 if(Character.digit(s.charAt(i),radix) < 0) return false;
             }
             return true;
-        }
-        
-        /**
-         * Checks if a message contains a URL
-         * 
-         * @param message
-         * @return 
-         */
-        public boolean isLink(String message) {
-        String regex = "\\b(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]";
-        String [] parts = message.split("\\s");
-            for( String item : parts ) try {
-                Pattern pattern = Pattern.compile(regex);
-                Matcher matcher = pattern.matcher(item);
-                if(matcher.matches()) {
-                    return true; 
-                }
-            } catch (RuntimeException e) {
-
-            }
-            return false;
-        
         }
         
         public boolean isSub(String channel, String sender) {
@@ -486,8 +455,8 @@ public class Botsquared extends PircBot {
 
                 if(!parameter.isEmpty() && parameter.length() > 0) {
                     if (!channels.get(channel).getPermitList().contains(parameter)) {
-                        channels.get(channel).getPermitList().add(parameter);
                         sendMessage(channel, "You have permitted " + parameter + " to post one link.");
+                        channels.get(channel).getPermitList().add(parameter.toLowerCase());
                     }
                     else {
                         sendMessage(channel, parameter + " already has permission to post a link.");
