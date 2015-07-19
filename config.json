@@ -3,8 +3,7 @@
         "!bot": {
             "name": "!bot",
             "level": "NATIVE",
-            "access": "ALL",
-            "visibility": "PUBLIC",
+            "access": "PUBLIC",
             "global": "true",
             "delay": "30",
             "output": "Hello, I am Botsquared, a bot created by Bearsquared."
@@ -12,17 +11,23 @@
         "!command": {
             "name": "!command",
             "level": "NATIVE",
-            "access": "OP",
-            "visibility": "MOD",
+            "access": "MOD",
             "global": "true",
             "delay": "30",
             "output": "Use this to handle custom commands. Type \"!command add|edit|remove\" to respectively add, edit, or remove commands."
         },
+        "!commands": {
+            "name": "!commands",
+            "level": "COMPLEX",
+            "access": "PUBLIC",
+            "global": "true",
+            "delay": "30",
+            "output": ""
+        },
         "!join": {
             "name": "!join",
             "level": "COMPLEX",
-            "access": "ALL",
-            "visibility": "NONE",
+            "access": "PUBLIC",
             "global": "true",
             "delay": "30",
             "output": ""
@@ -31,7 +36,6 @@
             "name": "!leave",
             "level": "COMPLEX",
             "access": "OWNER",
-            "visibility": "NONE",
             "global": "true",
             "delay": "30",
             "output": "I am leaving the channel."
@@ -39,17 +43,15 @@
         "!list": {
             "name": "!list",
             "level": "COMPLEX",
-            "access": "ALL",
-            "visibility": "NONE",
+            "access": "PUBLIC",
             "global": "true",
             "delay": "30",
-            "output": "Here is a list of commands: "
+            "output": ""
         },
         "!moderate": {
             "name": "!moderate",
             "level": "NATIVE",
-            "access": "OP",
-            "visibility": "MOD",
+            "access": "MOD",
             "global": "false",
             "delay": "0",
             "output": "If I'm am a moderator in I can help moderate the chat. Use the command \"!moderate links\" to have me delete links."
@@ -57,8 +59,7 @@
         "!permit": {
             "name": "!permit",
             "level": "NATIVE",
-            "access": "OP",
-            "visibility": "MOD",
+            "access": "MOD",
             "global": "false",
             "delay": "0",
             "output": "This command will allow a user to post one link to chat. Type \"!permit [name of user]\" to give them permission."
@@ -66,17 +67,31 @@
         "!poll": {
             "name": "!poll",
             "level": "FUNCTIONAL",
-            "access": "OP",
-            "visibility": "MOD",
+            "access": "MOD",
             "global": "false",
             "delay": "0",
-            "output": "This command allows you to create a poll for your viewers in the chat. Use \"!poll open <option 1> | <option 2> | ...\" to open a poll, and \"!poll close\" to close the poll and see the results."
+            "output": "This command allows you to create a poll for your viewers in the chat. Use \"!poll open option1 | option2 | ...\" to open a poll, and \"!poll close\" to close the poll and see the results."
+        },
+        "!quote": {
+            "name": "!quote",
+            "level": "COMPLEX",
+            "access": "PUBLIC",
+            "global": "true",
+            "delay": "30",
+            "output": ""
+        },
+        "!repeat": {
+    		"name": "!repeat",
+            "level": "NATIVE",
+            "access": "MOD",
+            "global": "true",
+            "delay": "30",
+            "output": "Use this to handle custom repeating message. Type \"!repeat add|edit|remove <name>\" to respectively add, edit, or remove commands."
         },
         "!subnotify": {
             "name": "!subnotify",
             "level": "NATIVE",
             "access": "OWNER",
-            "visibility": "MOD",
             "global": "true",
             "delay": "30",
             "output": "Use \"!subnotify [your message here]\" to set a subscriber notification."
@@ -84,8 +99,7 @@
         "!uptime": {
             "name": "!uptime",
             "level": "COMPLEX",
-            "access": "ALL",
-            "visibility": "PUBLIC",
+            "access": "PUBLIC",
             "global": "true",
             "delay": "30",
             "output": " has been streaming for "
@@ -93,8 +107,7 @@
         "!vote": {
             "name": "!vote",
             "level": "COMPLEX",
-            "access": "ALL",
-            "visibility": "PUBLIC",
+            "access": "PUBLIC",
             "global": "false",
             "delay": "0",
             "output": ""

@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
+import org.javatuples.*;
 
 /**
  * Defines a list to hold commands and add, edit, and remove methods.
@@ -66,40 +67,33 @@ public class CommandList {
         boolean added = false;
         String feedback = "";
         
-        Matcher mComplex = Util.pComplex.matcher(message);
-        Matcher mSimple = Util.pSimple.matcher(message);
-        Matcher mName = Util.pName.matcher(message);
+        Tuple string = Util.splitMessage(message);
         
-        if (mComplex.matches()) {
-            String name = mComplex.group(1);
-            String params = mComplex.group(2);
-            String output = mComplex.group(3);
-            
-            if (commands.get(name) == null) {
+        if (commands.get(string.getValue(0).toString()) == null) {
+            if (string.getSize() == 3) {
                 added = true;
-                commands.put(name, generateCommand(name,params,output));
+                commands.put(string.getValue(0).toString(), generateCommand(
+                            string.getValue(0).toString(),
+                            string.getValue(1).toString(),
+                            string.getValue(2).toString()));
             }
-            else {
-                feedback += (errorFail + exists).replaceAll("<name>", name);
-            }
-        }
-        else if (mSimple.matches()) {
-            String name = mSimple.group(1);
-            String output = mSimple.group(2);
-            
-            if (commands.get(name) == null) {
+            else if (string.getSize() == 2) {
                 added = true;
-                commands.put(name, generateCommand(name,output));
+                commands.put(string.getValue(0).toString(), generateCommand(
+                            string.getValue(0).toString(),
+                            string.getValue(1).toString()));
             }
-            else {
-                feedback += (errorFail + exists).replaceAll("<name>", name);
+            else if (string.getSize() == 1) {
+                if (!string.getValue(0).toString().equalsIgnoreCase("ERROR")) {
+                    feedback += errorFail + noOutput;
+                }
+                else {
+                    feedback += errorFail + noName;
+                }
             }
-        }
-        else if (mName.matches()) {
-            feedback += errorFail + noOutput;
         }
         else {
-            feedback += errorFail + noName;
+            feedback += errorFail + (errorFail + exists).replaceAll("<name>", string.getValue(0).toString());
         }
         
         if (added) {
@@ -123,70 +117,41 @@ public class CommandList {
         boolean edited = false;
         String feedback = "";
         
-        Matcher mComplex = Util.pComplex.matcher(message);
-        Matcher mSimple = Util.pSimple.matcher(message);
-        Matcher mName = Util.pName.matcher(message);
+        Tuple string = Util.splitMessage(message);
         
-        if (mComplex.matches()) {
-            String name = mComplex.group(1);
-            String params = mComplex.group(2);
-            String output = mComplex.group(3);
-            
-            if (commands.get(name) != null) {
-                try {
-                    Command o = (Command) commands.get(name).clone();
+        if (commands.get(string.getValue(0).toString()) != null) {
+            try {
+                Command o = (Command) commands.get(string.getValue(0).toString()).clone();
 
-                    if (o.getLevel().getWeight() <= level) {
-                        if (!generateCommand(name,params,output).equals(o)) {
-                            edited = true;
-                        }
-                        else {
-                            feedback += errorFail + " No were changes were made.";
-                        }
+                if (o.getLevel().getWeight() <= level) {
+                    if (string.getSize() == 3) {
+                        edited = !generateCommand(
+                                    string.getValue(0).toString(),
+                                    string.getValue(1).toString(),
+                                    string.getValue(2).toString()).equals(o);
                     }
-                    else {
-                        feedback += errorFail + noPermission;
+                    else if (string.getSize() == 2) {
+                        edited = !generateCommand(
+                                    string.getValue(0).toString(),
+                                    string.getValue(1).toString()).equals(o);
                     }
-                } catch (CloneNotSupportedException ex) {
-                    Logger.getLogger(CommandList.class.getName()).log(Level.SEVERE, null, ex);
+                    else if (string.getSize() == 1) {
+                        feedback += errorFail + noOutput;
+                    }
+                    
+                    if (!edited) {
+                        feedback += errorFail + " No were changes were made.";
+                    }
                 }
-            }
-            else {
-                feedback += (errorFail + doesntExist).replaceAll("<name>", name);
-            }
-        }
-        else if (mSimple.matches()) {
-            String name = mSimple.group(1);
-            String output = mSimple.group(2);
-            
-            if (commands.get(name) != null) {
-                try {
-                    Command o = (Command) commands.get(name).clone();
-
-                    if (o.getLevel().getWeight() <= level) {
-                        if (!generateCommand(name,output).equals(o)) {
-                            edited = true;
-                        }
-                        else {
-                            feedback += errorFail + " No were changes were made.";
-                        }
-                    }
-                    else {
-                        feedback += errorFail + noPermission;
-                    }
-                } catch (CloneNotSupportedException ex) {
-                    Logger.getLogger(CommandList.class.getName()).log(Level.SEVERE, null, ex);
+                else {
+                    feedback += errorFail + noPermission;
                 }
+            } catch (CloneNotSupportedException ex) {
+                Logger.getLogger(CommandList.class.getName()).log(Level.SEVERE, null, ex);
             }
-            else {
-                feedback += (errorFail + doesntExist).replaceAll("<name>", name);
-            }
-        }
-        else if (mName.matches()) {
-            feedback += errorFail + noOutput;
         }
         else {
-            feedback += errorFail + noName;
+            feedback += errorFail + (errorFail + doesntExist).replaceAll("<name>", string.getValue(0).toString());
         }
         
         if (edited) {
@@ -210,22 +175,18 @@ public class CommandList {
         boolean removed = false;
         String feedback = "";
         
-        if (name.startsWith("!")) {
-            if (!name.contains(" ")) {
-                if (commands.get(name) != null) {
-                    
-                    commands.remove(name);
-                    
-                    removed = true;
-                    
-                    feedback += "Your command has been removed successfully.";
-                }
-                else {
-                    feedback += (errorFail + doesntExist).replaceAll("<name>", name);
-                }
+        Matcher m = Util.pExactName.matcher(name);
+        
+        if (m.matches()) {
+            if (commands.get(name) != null) {
+                commands.remove(name);
+
+                removed = true;
+
+                feedback += "Your command has been removed successfully.";
             }
             else {
-                feedback += errorFail + noName;
+                feedback += (errorFail + doesntExist).replaceAll("<name>", name);
             }
         }
         else {
@@ -304,7 +265,7 @@ public class CommandList {
         
         for (Map.Entry<String, Command> pair : commands.entrySet()) {
             result = distance(message, pair.getKey());
-            System.out.println("The difference between " + message + " and " + pair.getKey() + " is " + result);
+            //System.out.println("The difference between " + message + " and " + pair.getKey() + " is " + result);
             
             if (result < low) {
                 low = result;

@@ -5,11 +5,11 @@ package botsquared;
  * @param <K>
  * @param <V>
  */
-public class Pair<K, V> {
+public class PairOld<K, V> {
     private K key;
     private V value;
     
-    public Pair(K key, V value) {
+    public PairOld(K key, V value) {
         this.key = key;
         this.value = value;
     }

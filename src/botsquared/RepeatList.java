@@ -12,7 +12,7 @@ public class RepeatList {
     private static final String errorFail = "I encountered an error and was unable to <mode> your command.";
     private static final String exists = " The command <name> already exists.";
     
-    public Pair<Boolean, String> addRepeat(String parameters) {
+    public PairOld<Boolean, String> addRepeat(String parameters) {
         boolean errors = false;
         boolean added = false;
         String feedback = "";
@@ -42,7 +42,7 @@ public class RepeatList {
             }
         }
         
-        Pair pair = new Pair(true, "");
+        PairOld pair = new PairOld(true, "");
         return pair;
     }
     
