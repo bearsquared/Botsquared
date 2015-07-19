@@ -10,14 +10,12 @@ public class Command implements Cloneable {
     /**
     * Level defines who can delete, or edit a command, and what fields of that command can be edited.
     * 
-    * OP allows moderators and the channel owner to delete the command, or edit the access, visibility, global, delay and output fields.
+    * MOD allows moderators and the channel owner to delete the command, or edit the access, visibility, global, delay and output fields.
     * OWNER allows only the channel owner to delete the command, or edit the access, visibility, global, delay and output fields.
     * 
-    * The channel owner can change the level of a command from OP to OWNER or vice versa but may not change the level of higher level commands.
+    * The channel owner can change the level of a command from MOD to OWNER or vice versa but may not change the level of higher level commands.
     * 
     * NATIVE allows no one to delete the command, and allows only the owner to edit the access, visibility, global, and delay fields.
-    * 
-    * Commands with a level of OP, OWNER, or NATIVE may be disabled.
     * 
     * FUNCTIONAL allows no one to delete the command and only edit the Access field.
     * This Level indicates that a command may accept parameters and/or perform a function.
@@ -83,8 +81,8 @@ public class Command implements Cloneable {
     /**
     * Access defines who can call a command.
     * 
-    * ALL can be called by anyone.
-    * OP can be called by only moderators.
+    * PUBLIC can be called by anyone.
+    * MOD can be called by only moderators.
     * OWNER can be called by only the channel owner.
     * BEARSQUARED can be called only by Bearsquared.
     * 
