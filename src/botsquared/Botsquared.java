@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
-import static jdk.nashorn.internal.objects.NativeString.toLowerCase;
 import org.javatuples.*;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
