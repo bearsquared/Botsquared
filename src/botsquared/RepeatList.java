@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 
 
 public class RepeatList {
-    private Map<String, Repeat> list = new HashMap<>();
+    /*private Map<String, Repeat> list = new HashMap<>();
     
     private static final String errorFail = "I encountered an error and was unable to <mode> your command.";
     private static final String exists = " The command <name> already exists.";
@@ -79,5 +79,5 @@ public class RepeatList {
     
     public void setList(Map<String, Repeat> list) {
         this.list = list;
-    }
+    }*/
 }
