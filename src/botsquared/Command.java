@@ -30,7 +30,7 @@ public class Command implements Cloneable {
     * The Level OP is assigned to a command without one explicitly assigned. You can only assign a command a Level of OP or OWNER.
     */
     public enum Level {
-        OP (100, true),
+        MOD (100, true),
         OWNER (200, true), 
         NATIVE (400, false), 
         FUNCTIONAL (500, false), 
@@ -91,8 +91,9 @@ public class Command implements Cloneable {
     * The Access ALL is assigned to a command without one explicitly assigned.
     */
     public enum Access {
-        ALL (0, true), 
-        OP (100, true), 
+        PUBLIC (0, true),
+        SUB (50, true),
+        MOD (100, true), 
         OWNER (200, true), 
         BEARSQUARED (300, false);
         
@@ -134,8 +135,8 @@ public class Command implements Cloneable {
     }
     
     private String name; //unique command name
-    private Level level = Level.OP; //who can edit or remove this command | *OP, OWNER, NATIVE, FUNCTIONAL, LIST
-    private Access access = Access.ALL; //who can call command | *ALL, OP, OWNER
+    private Level level = Level.MOD; //who can edit or remove this command | *OP, OWNER, NATIVE, FUNCTIONAL, LIST
+    private Access access = Access.PUBLIC; //who can call command | *ALL, OP, OWNER
     private boolean global = true; //determines if command acknowledges global timeout | *true, false
     private int delay = 30; //coeffecient that determines the interval at which this command may be called | integer 0-3600, *30
     private transient long lastUsed = 0L; //stores system time the command was last used
@@ -234,7 +235,17 @@ public class Command implements Cloneable {
     }
     
     public void setDelay(int i) throws IllegalArgumentException {
-        delay = i;
+        if (i >= 0 && i <= 3600) {
+            delay = i;
+        }
+        else {
+           if (i < 0) {
+               delay = 0;
+           }
+           else if (i > 3600) {
+               delay = 3600;
+           }
+        }
     }
     
     public void setDelay(String s) throws IllegalArgumentException {
@@ -244,7 +255,12 @@ public class Command implements Cloneable {
                 delay = i;
             }
             else {
-               throw new IllegalArgumentException("0 to 3600"); 
+               if (i < 0) {
+                   delay = 0;
+               }
+               else if (i > 3600) {
+                   delay = 3600;
+               }
             }
         }
         catch (NumberFormatException e) {

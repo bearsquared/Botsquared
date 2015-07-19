@@ -86,7 +86,7 @@ public class Poll {
         }
         
         else {
-            return "There isn't an open poll. If you want to open a new poll, use \"!poll open <option 1> | <option 2> | ...\" instead.";
+            return "There isn't an open poll. If you want to open a new poll, use \"!poll open option1 | option2 | ...\" instead.";
         }
     }
     

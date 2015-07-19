@@ -21,8 +21,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import static jdk.nashorn.internal.objects.NativeString.toLowerCase;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.joda.time.Period;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 
 /**
  * Creates, reads, updates, removes and handles chat commands.
@@ -33,8 +38,6 @@ public class Botsquared extends PircBot {
     private Map<String, Channel> channels = new HashMap<>();
     
     CommandList natives = new CommandList();
-    
-    ArrayList<String> whitelist = new ArrayList<>(); //This list stores the users that are permitted to post one link in chat.
     
         /**
          * Sets the nick of the bot.
@@ -53,8 +56,6 @@ public class Botsquared extends PircBot {
          * @throws CloneNotSupportedException 
          */
         public synchronized void initializeBot(String channel) throws FileNotFoundException, UnsupportedEncodingException, CloneNotSupportedException {
-            
-            sendRawLine("TWITCHCLIENT 3");
             try {
                 
                 File f = new File(channel + ".json");
@@ -150,88 +151,80 @@ public class Botsquared extends PircBot {
                 String[] words = message.split(" ");
                 if (words[2].equalsIgnoreCase("subscribed!")) {
                     String notify = channels.get(channel).getSubMessage();
-                    notify = notify.replaceAll("<user>", words[0]);
-                    sendMessage(channel, notify);
+                    String subMessage = notify.replaceAll("<user>", words[0]);
+                    sendMessage(channel, subMessage);
                 }
                 else if (words[1].equalsIgnoreCase("subscribed")) {
                     sendMessage(channel, "Thanks " + words[0] + " for subscribing for " + words[3] + " months in a row!");
                 }
             }
             
-            if (message.startsWith("!")) { // Messages that start with "!" are assumed to be a command.
+            Pattern p = Pattern.compile("^!\\w+$");
+            Matcher m = p.matcher(message);
+            
+            //if (message.startsWith("!")) { // Messages that start with "!" are assumed to be a command.
+            if (m.matches()) {
                 CommandList thisChannel = new CommandList();
                 thisChannel.putCommands(natives);
                 thisChannel.putCommands(channels.get(channel).getList());
                 Command c = thisChannel.getCommands().get(message);
+                
                 if (c != null) {
-                    if (c.sendable(checkWeight(channel, sender), channels.get(channel).getGlobalTimeout(), channels.get(channel).getGlobalDelay())) {
-                        if (c.getLevel() != Command.Level.COMPLEX) {
-                            if (c.getGlobal()) {
-                                channels.get(channel).setGlobalTimeout(System.currentTimeMillis());
-                            }
-
-                            c.setLastUsed(System.currentTimeMillis());
-
-                            sendMessage(channel, c.getOutput());
-                        }
-                        else {
-                            if (c.getName().equalsIgnoreCase("!join") && channel.equalsIgnoreCase("#" + getName())) {
-                                joinChannel("#" + sender);
-                            }
-                            else if (c.getName().equalsIgnoreCase("!leave") && c.checkAccess(checkWeight(channel, sender))) {
-                                sendMessage(channel, c.getOutput());
-                                partChannel(channel);
-                            }
-                            else if (c.getName().equalsIgnoreCase("!uptime")) {
-                                String html = "http://nightdev.com/hosted/uptime.php?channel=" + channel.replaceFirst("#", "");
-                                try {
-                                    Document doc = Jsoup.connect(html).get();
-                                    String text = doc.body().text();
-                                    if (text.equalsIgnoreCase("The channel is not live.")) {
-                                        sendMessage(channel, text);
-                                    }
-                                    else {
-                                        sendMessage(channel, channel.replaceFirst("#", "") + c.getOutput() + text + ".");
-                                    }
-                                } catch (IOException ex) {
-                                    Logger.getLogger(Botsquared.class.getName()).log(Level.SEVERE, null, ex);
-                                }
-                            }
-                        }
+                    handleCommand(channel, message, sender, c);
+                }
+                else {
+                    String name = channels.get(channel).getList().similar(message);
+                    c = thisChannel.getCommands().get(name);
+                    if (c != null) {
+                        handleCommand(channel, message, sender, c);
                     }
                 }
-                else if (message.contains(" ")) {
-                    c = natives.getCommands().get(message.substring(0, message.indexOf(" ")));
+            }
+            else if (message.contains(" ")) {
+                Command c = natives.getCommands().get(message.substring(0, message.indexOf(" ")));
 
-                    if (c != null && c.checkAccess(checkWeight(channel, sender))) {
-                        if (c.getName().equalsIgnoreCase("!command")) {
-                            handleCommand(channel, message, sender);
-                        }
-                        else if (c.getName().equalsIgnoreCase("!join") && channel.equalsIgnoreCase("#" + getName()) && sender.equalsIgnoreCase("bearsquared")) {
-                                handleJoin(message);
-                        }
-                        else if (c.getName().equalsIgnoreCase("!moderate")) {
-                            handleModerate(channel, message);
-                        }
-                        else if (c.getName().equalsIgnoreCase("!permit")) {
-                            handlePermit(channel, message);
-                        }
-                        else if (c.getName().equalsIgnoreCase("!poll")) {
-                            handlePoll(channel, message);
-                        }
-                        else if (c.getName().equalsIgnoreCase("!subnotify")) {
-                            handleSubNotify(channel, message);
-                        }
-                        else if (c.getName().equalsIgnoreCase("!vote")) {
-                            handleVote(channel, sender, message);
-                        }
+                if (c != null && c.checkAccess(checkWeight(channel, sender))) {
+                    if (c.getName().equalsIgnoreCase("!command")) {
+                        handleCommandAER(channel, message, sender);
+                    }
+
+                    else if (c.getName().equalsIgnoreCase("!join") && channel.equalsIgnoreCase("#" + getName()) && sender.equalsIgnoreCase("bearsquared")) {
+                        handleJoin(message);
+                    }
+
+                    else if (c.getName().equalsIgnoreCase("!moderate")) {
+                        handleModerate(channel, message);
+                    }
+
+                    else if (c.getName().equalsIgnoreCase("!permit")) {
+                        handlePermit(channel, message);
+                    }
+
+                    else if (c.getName().equalsIgnoreCase("!poll")) {
+                        handlePoll(channel, message);
+                    }
+
+                    else if (c.getName().equalsIgnoreCase("!quote")) {
+                        handleQuote(channel, message);
+                    }
+
+                    else if (c.getName().equalsIgnoreCase("!repeat")) {
+                        handleRepeatAER(channel, message);
+                    }
+
+                    else if (c.getName().equalsIgnoreCase("!subnotify")) {
+                        handleSubNotify(channel, message);
+                    }
+
+                    else if (c.getName().equalsIgnoreCase("!vote")) {
+                        handleVote(channel, sender, message);
                     }
                 }
             }
             // If moderate is true then it will also check messages sent by normal users for URLs.
-            else if (isLink(message) && !isOp(channel, sender) && channels.get(channel).getModerate() && !channels.get(channel).getSuperList().contains(sender)) {
-                if (whitelist.contains(sender)) {
-                    whitelist.remove(sender);
+            else if (isLink(message) && channels.get(channel).getModerate() && checkWeight(channel, sender) < Command.Access.SUB.getWeight()) {
+                if (channels.get(channel).getPermitList().contains(toLowerCase(sender))) {
+                    channels.get(channel).getPermitList().remove(sender);
                 }
                 else {
                     sendMessage(channel, "/timeout " + sender + " 1");//Timeout sender for 1 second to delete message
@@ -244,10 +237,6 @@ public class Botsquared extends PircBot {
                 for (User user : users) {
                     System.out.println(user.toString());
                 }
-            }
-            
-            else if (message.equalsIgnoreCase("#list") && sender.equalsIgnoreCase("bearsquared")) {
-                sendMessage(channel, channels.get(channel).getList().getCommands().toString());
             }
 	}
         
@@ -275,18 +264,6 @@ public class Botsquared extends PircBot {
         }
         
         /**
-         * Constructs an error string for descriptive feedback.
-         * 
-         * @param field
-         * @param values
-         * @return 
-         */
-        public String buildError(String field, String values) {
-            String error = " The field " + Character.toUpperCase(field.charAt(0)) + field.substring(1) + " must have a value of " + values + ".";
-            return error;
-        }
-        
-        /**
          * Serializes the channel's command list to JSON.
          * 
          * @param channel 
@@ -304,24 +281,20 @@ public class Botsquared extends PircBot {
             }
         }
         
-        /**
-         * Constructs a partial string to provide feedback when a user tries to edit a command's field they do not have permission to.
-         * 
-         * @param current
-         * @param field
-         * @return 
-         */
-        public String buildPermsVio(String current, String field) {
-            String s = current;
-            if (s.isEmpty()) {
-                field = Character.toUpperCase(field.charAt(0)) + field.substring(1);
-                s = " You do not have permission to edit the " + field;
+        public static boolean isInteger(String s) {
+            return isInteger(s,10);
+        }
+
+        public static boolean isInteger(String s, int radix) {
+            if(s.isEmpty()) return false;
+            for(int i = 0; i < s.length(); i++) {
+                if(i == 0 && s.charAt(i) == '-') {
+                    if(s.length() == 1) return false;
+                    else continue;
+                }
+                if(Character.digit(s.charAt(i),radix) < 0) return false;
             }
-            else {
-                field = Character.toUpperCase(field.charAt(0)) + field.substring(1);
-                s += " " + field;
-            }
-            return s;
+            return true;
         }
         
         /**
@@ -346,6 +319,10 @@ public class Botsquared extends PircBot {
         
         }
         
+        public boolean isSub(String channel, String sender) {
+            return channels.get(channel).getSuperList().contains(sender);
+        }
+        
         /**
          * Check the list of known moderators for the channel and return if the sender is found.
          * 
@@ -353,7 +330,7 @@ public class Botsquared extends PircBot {
          * @param sender
          * @return 
          */
-        public boolean isOp(String channel, String sender) { 
+        public boolean isMod(String channel, String sender) { 
             return channels.get(channel).getModList().stream().anyMatch((u) -> (u.equalsIgnoreCase(sender))) || isOwner(channel, sender) || sender.equalsIgnoreCase("bearsquared");
         }
         
@@ -375,16 +352,116 @@ public class Botsquared extends PircBot {
         
         public int checkWeight(String channel, String sender) {
             if (sender.equalsIgnoreCase("bearsquared")) {
-                return 300;
+                return Command.Access.BEARSQUARED.getWeight();
             }
             else if (isOwner(channel, sender)) {
-                return 200;
+                return Command.Access.OWNER.getWeight();
             }
-            else if (isOp(channel, sender)) {
-                return 100;
+            else if (isMod(channel, sender)) {
+                return Command.Access.MOD.getWeight();
+            }
+            else if (isSub(channel, sender)) {
+                return Command.Access.SUB.getWeight();
             }
             else {
                 return 0;
+            }
+        }
+        
+        public ArrayList<String> splitMessage(String message) {
+            ArrayList<String> tokens = new ArrayList<>();
+            
+            Pattern p = Pattern.compile("(^!\\w+)\\s+(.+)");
+            Matcher m = p.matcher(message);
+            
+            if (m.matches()) {
+                tokens.add(0, m.group(1));
+                tokens.add(1, m.group(2));
+            }
+            
+            return tokens;
+        }
+        
+        public ArrayList<String> splitAER(String message) {
+            ArrayList<String> tokens = new ArrayList<>();
+            
+            Pattern p = Pattern.compile("(^!\\w+)\\s+(add|edit|remove)\\s+(.+)", Pattern.CASE_INSENSITIVE);
+            Matcher m = p.matcher(message);
+            
+            if (m.matches()) {
+                tokens.add(0, m.group(1));
+                tokens.add(1, m.group(2));
+                tokens.add(2, m.group(3));
+            }
+            
+            return tokens;
+        }
+        
+        public void handleCommand(String channel, String message, String sender, Command c) {
+            if (c.sendable(checkWeight(channel, sender), channels.get(channel).getGlobalTimeout(), channels.get(channel).getGlobalDelay())) {
+                if (c.getLevel() != Command.Level.COMPLEX) {
+                    if (c.getGlobal()) {
+                        channels.get(channel).setGlobalTimeout(System.currentTimeMillis());
+                    }
+
+                    c.setLastUsed(System.currentTimeMillis());
+
+                    sendMessage(channel, c.getOutput());
+                }
+                else {
+                    if (c.getName().equalsIgnoreCase("!commands")
+                            || c.getName().equalsIgnoreCase("!list") 
+                            && c.sendable(checkWeight(channel, sender), channels.get(channel).getGlobalTimeout(), channels.get(channel).getGlobalDelay())) {
+                        if (c.getGlobal()) {
+                            channels.get(channel).setGlobalTimeout(System.currentTimeMillis());
+                        }
+
+                        c.setLastUsed(System.currentTimeMillis());
+
+                        sendMessage(channel, channels.get(channel).getList().toList());
+                    }
+                    else if (c.getName().equalsIgnoreCase("!join") && channel.equalsIgnoreCase("#" + getName())) {
+                        joinChannel("#" + sender);
+                    }
+
+                    else if (c.getName().equalsIgnoreCase("!leave") && c.checkAccess(checkWeight(channel, sender))) {
+                        sendMessage(channel, c.getOutput());
+                        partChannel(channel);
+                    }
+
+                    else if (c.getName().equalsIgnoreCase("!quote")) {
+                        sendMessage(channel, channels.get(channel).getQuote());
+                    }
+
+                    else if (c.getName().equalsIgnoreCase("!uptime")) {
+                        String html = "https://api.twitch.tv/kraken/streams/" + channel.replaceFirst("#", "");
+
+                        try {
+                            String json = Jsoup.connect(html).ignoreContentType(true).execute().body();
+                            Gson gson = new Gson();
+                            StreamAPI stream = gson.fromJson(json, StreamAPI.class);
+                            if (stream.getStream() != null) {
+                                DateTimeFormatter fmt = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
+
+                                DateTime created = fmt.parseDateTime(stream.getStream().getCreated_At());
+                                created = created.withZoneRetainFields(DateTimeZone.UTC);
+
+                                DateTime dt = new DateTime();
+
+                                Period uptime = new Period(created,dt);
+
+                                sendMessage(channel, channel.replaceFirst("#", "")
+                                        + c.getOutput()
+                                        + String.format("%d hours, %d minutes, and %d seconds.", uptime.getHours(), uptime.getMinutes(), uptime.getSeconds()));
+                            }
+                            else {
+                                sendMessage(channel, "The channel is not online.");
+                            }
+                        } catch (IOException ex) {
+                            Logger.getLogger(Botsquared.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
+                }
             }
         }
         
@@ -404,9 +481,8 @@ public class Botsquared extends PircBot {
          * @param message
          */
         public void handleModerate(String channel, String message) {
-            String call = "!moderate ";
-            String parameter = message.replace(call, "").trim();
-            if (isOp(channel, this.getName())) {
+            String parameter = splitMessage(message).get(1);
+            if (isMod(channel, this.getName())) {
                 if (parameter.equalsIgnoreCase("links") || parameter.equalsIgnoreCase("link")) {
                     if (!channels.get(channel).getModerate()) {
                         channels.get(channel).setModerate(true);
@@ -434,12 +510,11 @@ public class Botsquared extends PircBot {
          */
         public void handlePermit(String channel, String message) {
             if (channels.get(channel).getModerate()) { //Check if moderate is true
-                String call = "!permit ";
-                String parameter = message.replace(call, "").trim();
+                String parameter = splitMessage(message).get(1);
 
                 if(!parameter.isEmpty() && parameter.length() > 0) {
-                    if (!whitelist.contains(parameter)) {
-                        whitelist.add(parameter);
+                    if (!channels.get(channel).getPermitList().contains(parameter)) {
+                        channels.get(channel).getPermitList().add(parameter);
                         sendMessage(channel, "You have permitted " + parameter + " to post one link.");
                     }
                     else {
@@ -453,8 +528,7 @@ public class Botsquared extends PircBot {
         }
         
         public void handlePoll(String channel, String message) {
-            String call = "!poll ";
-            String parameter = message.replace(call, "").trim();
+            String parameter = splitMessage(message).get(1);
             
             if (parameter.startsWith("open")) {
                 parameter = parameter.replace("open", "").trim();
@@ -485,9 +559,87 @@ public class Botsquared extends PircBot {
             }
         }
         
+        public void handleQuote(String channel, String message) {
+            String parameter = splitMessage(message).get(1);
+            
+            if (!parameter.isEmpty() && parameter.length() > 0) {
+                if (!parameter.startsWith("remove ")) {
+                    channels.get(channel).getQuotes().add(parameter);
+                    buildJson(channel);
+                }
+                else {
+                    parameter = parameter.replace("remove", "").trim();
+                    if (!parameter.isEmpty() && parameter.length() > 0) {
+                        if (isInteger(parameter)) {
+                            if (Integer.parseInt(parameter) <= channels.get(channel).getQuotes().size()) {
+                                channels.get(channel).getQuotes().remove(Integer.parseInt(parameter) - 1);
+                                sendMessage(channel, "The quote has been removed.");
+                                buildJson(channel);
+                            }
+                            else {
+                                sendMessage(channel, "There is no quote #" + Integer.parseInt(parameter) + ".");
+                            }
+                        }
+                        else {
+                            sendMessage(channel, "Please enter the number of the quote you want to remove.");
+                        }
+                    }
+                }
+            }
+        }
+        
+        public void handleRepeatAER(String channel, String message) {
+            Pattern p = Pattern.compile("(^!\\w+)\\s+(add|edit|remove)\\s+(.+)", Pattern.CASE_INSENSITIVE);
+            Matcher m = p.matcher(message);
+            
+            if (m.matches()) {
+                ArrayList<String> tokens = splitAER(message);
+                String mode = tokens.get(1);
+                String parameters = tokens.get(2);
+                
+                if (mode.equalsIgnoreCase("add")) {
+                    Pair<Boolean, String> p1 = channels.get(channel).getRepeatList().addRepeat(parameters);
+                    if (p1.getKey()) {
+                        buildJson(channel);
+                    }
+                    sendMessage(channel, p1.getValue());
+                }
+                else if (mode.equalsIgnoreCase("edit")) {
+                    /*Pair<Boolean, String> p1 = channels.get(channel).getList().editCommand(parameters, checkWeight(channel, sender));
+                    if (p1.getKey()) {
+                        buildJson(channel);
+                    }
+                    sendMessage(channel, p1.getValue());*/
+                }
+                else if (mode.equalsIgnoreCase("remove")) {
+                    /*Pair<Boolean, String> p1 = channels.get(channel).getList().removeCommand(parameters, checkWeight(channel, sender));
+                    if (p1.getKey()) {
+                        buildJson(channel);
+                    }
+                    sendMessage(channel, p1.getValue());*/
+                }
+            }
+            else {
+                ArrayList<String> tokens = splitMessage(message);
+                String mode = tokens.get(1);
+                if (mode.equalsIgnoreCase("add") || mode.equalsIgnoreCase("edit") || mode.equalsIgnoreCase("remove")) {
+                    String output = "To <mode> a repeating message use the format \"!repeat <mode> ![name]".replaceAll("<mode>", mode);
+                    if (mode.equalsIgnoreCase("add") || mode.equalsIgnoreCase("edit")) {
+                        output += " [output]";
+                    }
+                    output += "\".";
+
+                    sendMessage(channel, output);
+                }
+                
+                else {
+                    sendMessage(channel, "I didn't recognize the parameter after !repeat.");
+                }
+            }
+        }
+        
         public void handleSubNotify(String channel, String message) {
-            String call = "!subnotify ";
-            String parameter = message.replace(call, "").trim();
+            String parameter = splitMessage(message).get(1);
             
             if(!parameter.isEmpty() && parameter.length() > 0) {
                 channels.get(channel).setSubMessage(parameter);
@@ -497,8 +649,7 @@ public class Botsquared extends PircBot {
         }
         
         public void handleVote(String channel, String sender, String message) throws IllegalArgumentException {
-            String call = "!vote ";
-            String parameter = message.replace(call, "").trim();
+            String parameter = splitMessage(message).get(1);
             
             try {
                 if(!parameter.isEmpty() && parameter.length() > 0) {
@@ -517,14 +668,63 @@ public class Botsquared extends PircBot {
          * @param message
          * @param sender 
          */
-        public void handleCommand(String channel, String message, String sender) {
-            String call = "!command";
-            String parameters = message.replace(call, "").trim();
+        public void handleCommandAER(String channel, String message, String sender) {
+            Pattern p = Pattern.compile("(^!\\w+)\\s+(add|edit|remove)\\s+(.+)", Pattern.CASE_INSENSITIVE);
+            Matcher m = p.matcher(message);
+            
+            if (m.matches()) {
+                ArrayList<String> tokens = splitAER(message);
+                String mode = tokens.get(1);
+                String parameters = tokens.get(2);
+                
+                if (mode.equalsIgnoreCase("add")) {
+                    Pair<Boolean, String> p1 = channels.get(channel).getList().addCommand(parameters);
+                    if (p1.getKey()) {
+                        buildJson(channel);
+                    }
+                    sendMessage(channel, p1.getValue());
+                }
+                else if (mode.equalsIgnoreCase("edit")) {
+                    Pair<Boolean, String> p1 = channels.get(channel).getList().editCommand(parameters, checkWeight(channel, sender));
+                    if (p1.getKey()) {
+                        buildJson(channel);
+                    }
+                    sendMessage(channel, p1.getValue());
+                }
+                else if (mode.equalsIgnoreCase("remove")) {
+                    Pair<Boolean, String> p1 = channels.get(channel).getList().removeCommand(parameters, checkWeight(channel, sender));
+                    if (p1.getKey()) {
+                        buildJson(channel);
+                    }
+                    sendMessage(channel, p1.getValue());
+                }
+            }
+            else {
+                ArrayList<String> tokens = splitMessage(message);
+                String mode = tokens.get(1);
+                if (mode.equalsIgnoreCase("add") || mode.equalsIgnoreCase("edit") || mode.equalsIgnoreCase("remove")) {
+                    String output = "To <mode> a command use the format \"!command <mode> ![name]".replaceAll("<mode>", mode);
+                    if (mode.equalsIgnoreCase("add") || mode.equalsIgnoreCase("edit")) {
+                        output += " [output]";
+                    }
+                    output += "\".";
+
+                    sendMessage(channel, output);
+                }
+                
+                else {
+                    sendMessage(channel, "I didn't recognize the parameter after !repeat.");
+                }
+            }
+            /*
+            ArrayList<String> tokens = splitMessage(message);
+            String name = tokens.get(0);
+            String parameters = tokens.get(1);
             
             CommandList thisChannel = new CommandList();
             thisChannel.putCommands(natives);
             thisChannel.putCommands(channels.get(channel).getList());
-            Command c = thisChannel.getCommands().get(call);
+            Command c = thisChannel.getCommands().get(name);
 
             if (parameters.equalsIgnoreCase("add")) {
                 sendMessage(channel, "To add a command use the format \"!command add ![name] [output]\".");
@@ -553,7 +753,6 @@ public class Botsquared extends PircBot {
             }
             else if (parameters.startsWith("remove ")) {
                 parameters = parameters.replace("remove ", "").trim(); 
-                //handleCommandRemove(channel, sender, parameters);
                 Pair<Boolean, String> p1 = channels.get(channel).getList().removeCommand(parameters, checkWeight(channel, sender));
                 if (p1.getKey()) {
                     buildJson(channel);
@@ -562,44 +761,7 @@ public class Botsquared extends PircBot {
             }
             else {
                 sendMessage(channel, "I didn't recognize the parameter after !command.");
-            }
-        }
-        
-        public void handleCommandRemove(String channel, String sender, String name) {
-            String formatRemind = " Make sure you use the format \"!command remove ![name]\".";
-            String noName = "It looked like you tried to remove a command but I was unable to find a valid command name." + formatRemind;
-            
-            CommandList thisChannel = new CommandList();
-            thisChannel.putCommands(natives);
-            thisChannel.putCommands(channels.get(channel).getList());
-            Command c = thisChannel.getCommands().get(name);
-            
-            if (name.startsWith("!") && !name.contains(" ")) { //Check that the name is valid
-                
-                if (c != null) {
-                    
-                    if (c.checkLevel(checkWeight(channel, sender))) { //Check that the command can be removed
-                        channels.get(channel).getList().getCommands().remove(c.getName());
-
-                        buildJson(channel);
-
-                        sendMessage(channel, "Your command was removed successfully.");
-                    }
-                    
-                    else {
-                        sendMessage(channel, "You do not have permission to remove this command.");
-                    }
-                    
-                }
-                
-                else {
-                    sendMessage(channel, "The command " + name + " doesn't exist. If you were trying to add this command use \"!command add\" instead.");
-                }
-            }
-            
-            else {
-                sendMessage(channel, noName);
-            }
+            }*/
         }
         
 }//End of class

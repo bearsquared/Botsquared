@@ -1,6 +1,7 @@
 package botsquared;
 
 import java.util.ArrayList;
+import java.util.Random;
 
 public class Channel {
     private String name;
@@ -9,8 +10,11 @@ public class Channel {
     private transient long globalTimeout = 0L;
     private boolean moderate = false;
     private String subMessage = "(not set)";
+    private ArrayList<String> quotes = new ArrayList<>();
+    private RepeatList repeatList = new RepeatList();
     private transient ArrayList<String> modList = new ArrayList<>();
     private transient ArrayList<String> superList = new ArrayList<>();
+    private transient ArrayList<String> permitList = new ArrayList<>();
     private transient Poll poll = new Poll();
     
     public Channel() {
@@ -45,12 +49,36 @@ public class Channel {
         return subMessage;
     }
     
+    public String getQuote() {
+        if (!quotes.isEmpty()) {
+            Random randGen = new Random();
+            int n = randGen.nextInt(quotes.size());
+            
+            return "#" + (n + 1) + ": \"" + quotes.get(n) + "\"";
+        }
+        else {
+            return "I do not know any quotes.";
+        }
+    }
+    
+    public ArrayList<String> getQuotes() {
+        return quotes;
+    }
+    
+    public RepeatList getRepeatList() {
+        return repeatList;
+    }
+    
     public ArrayList<String> getModList() {
         return modList;
     }
     
     public ArrayList<String> getSuperList() {
         return superList;
+    }
+    
+    public ArrayList<String> getPermitList() {
+        return permitList;
     }
     
     public Poll getPoll() {
@@ -85,8 +113,20 @@ public class Channel {
         this.subMessage = subMessage;
     }
     
+    public void setQuotes(ArrayList<String> quotes) {
+        this.quotes = quotes;
+    }
+    
+    public void setRepeatList(RepeatList repeatList) {
+        this.repeatList = repeatList;
+    }
+    
     public void setSuperList(ArrayList<String> superList) {
         this.superList = superList;
+    }
+    
+    public void setPermitList(ArrayList<String> permitList) {
+        this.permitList = permitList;
     }
     
     public void setPoll(Poll poll) {
