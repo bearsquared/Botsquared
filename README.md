@@ -26,7 +26,7 @@ All commands have an Local Delay that is 30 seconds long by default. The Delay f
 The Output is what the bot will say when called. The Output can be anything as long as it is **at least one character, and does not start with `<` and end with `>`**. Users call a command by typing it's name in chat and the bot will respond with the output. For example:
 
 >**User:** !bot
->**Botsquared:** Hello, I am Botsquared, a bot created by Bearsquared.
+**Botsquared:** Hello, I am Botsquared, a bot created by Bearsquared.
 
 ## Native Commands
 
