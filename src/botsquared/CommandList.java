@@ -1,12 +1,10 @@
 package botsquared;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Defines a list to hold commands and add, edit, and remove methods.
@@ -35,47 +33,70 @@ public class CommandList {
         commands.putAll(cl.getCommands());
     }
     
-    public Pair<Boolean, String> addCommand(String parameters) {
+    public String toList () {
+        String list;
+        if (!commands.isEmpty()) {
+            boolean notFirst = false;
+            
+            list = "Here is a list of commands: ";
+            
+            for (Map.Entry<String, Command> entry : commands.entrySet()) {
+                if (notFirst) {
+                    list += ", ";
+                }
+                else {
+                    notFirst = true;
+                }
+                
+                list += entry.getKey();
+            }
+            
+            list += ".";
+        }
+        else {
+            list = "There are no custom commands.";
+        }
+        
+        return list;
+    }
+
+    
+    public Pair<Boolean, String> addCommand(String message) {
         boolean errors = false;
         boolean added = false;
         String feedback = "";
         
-        if (parameters.startsWith("!")) {
-            if (parameters.contains(" ")) {
-                String name = parameters.substring(0, parameters.indexOf(" "));
-                parameters = parameters.replace(name, "").trim();
-                
-                if (commands.get(name) == null) {
-                    Pair<String, ArrayList<String>> p1 = splitParams(parameters);
-                    
-                    parameters = p1.getKey();
-                    ArrayList<String> fieldParameters = p1.getValue();
-                    
-                    if (!parameters.isEmpty()) {
-                        added = true;
-                        
-                        Pair<String, Command> p2 = generateCommand(name, fieldParameters, parameters);
-                        
-                        if (!p2.getKey().isEmpty()) {
-                            errors = true;
-                            feedback = p2.getKey();
-                        }
-                        
-                        commands.put(name, p2.getValue());
-                        
-                    }
-                    else {
-                       feedback += errorFail + noOutput; 
-                    }
-                }
-                else {
-                    feedback += errorFail + exists;
-                    feedback = feedback.replaceAll("<name>", name);
-                }
+        Matcher mComplex = Util.pComplex.matcher(message);
+        Matcher mSimple = Util.pSimple.matcher(message);
+        Matcher mName = Util.pName.matcher(message);
+        
+        if (mComplex.matches()) {
+            String name = mComplex.group(1);
+            String params = mComplex.group(2);
+            String output = mComplex.group(3);
+            
+            if (commands.get(name) == null) {
+                added = true;
+                commands.put(name, generateCommand(name,params,output));
             }
             else {
-                feedback += errorFail + noOutput;
+                feedback += (errorFail + exists).replaceAll("<name>", name);
             }
+        }
+        else if (mSimple.matches()) {
+            String name = mSimple.group(1);
+            String output = mSimple.group(2);
+            
+            if (commands.get(name) == null) {
+                added = true;
+                commands.put(name, generateCommand(name,output));
+            }
+            else {
+                feedback += (errorFail + exists).replaceAll("<name>", name);
+            }
+        }
+        else if (mName.matches()) {
+            feedback += errorFail + noOutput;
         }
         else {
             feedback += errorFail + noName;
@@ -97,54 +118,72 @@ public class CommandList {
         return result;
     }
     
-    public Pair<Boolean, String> editCommand(String parameters, int level) {
+    public Pair<Boolean, String> editCommand(String message, int level) {
         boolean errors = false;
         boolean edited = false;
         String feedback = "";
         
-        if (parameters.startsWith("!")) {
-            if (parameters.contains(" ")) {
-                String name = parameters.substring(0, parameters.indexOf(" "));
-                parameters = parameters.replace(name, "").trim();
-                
-                if (commands.get(name) != null) {
-                    try {
-                        Command o = (Command) commands.get(name).clone();
-                        
-                        if (o.getLevel().getWeight() <= level) {
-                            Pair<String, ArrayList<String>> p1 = splitParams(parameters);
-                            
-                            parameters = p1.getKey();
-                            ArrayList<String> fieldParameters = p1.getValue();
-                            
-                            Pair<String, Command> p2 = generateCommand(name, fieldParameters, parameters);
-                            
-                            if (!p2.getKey().isEmpty()) {
-                                errors = true;
-                                feedback = p2.getKey();
-                            }
-                            
-                            if (!p2.getValue().equals(o)) {
-                                edited = true;
-                            }
-                            else {
-                                feedback += errorFail + " No were changes were made.";
-                            }
+        Matcher mComplex = Util.pComplex.matcher(message);
+        Matcher mSimple = Util.pSimple.matcher(message);
+        Matcher mName = Util.pName.matcher(message);
+        
+        if (mComplex.matches()) {
+            String name = mComplex.group(1);
+            String params = mComplex.group(2);
+            String output = mComplex.group(3);
+            
+            if (commands.get(name) != null) {
+                try {
+                    Command o = (Command) commands.get(name).clone();
+
+                    if (o.getLevel().getWeight() <= level) {
+                        if (!generateCommand(name,params,output).equals(o)) {
+                            edited = true;
                         }
                         else {
-                            feedback += errorFail + noPermission;
+                            feedback += errorFail + " No were changes were made.";
                         }
-                    } catch (CloneNotSupportedException ex) {
-                        Logger.getLogger(CommandList.class.getName()).log(Level.SEVERE, null, ex);
                     }
-                }
-                else {
-                    feedback += (errorFail + doesntExist).replaceAll("<name>", name);
+                    else {
+                        feedback += errorFail + noPermission;
+                    }
+                } catch (CloneNotSupportedException ex) {
+                    Logger.getLogger(CommandList.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
             else {
-                feedback += errorFail + noParameters;
+                feedback += (errorFail + doesntExist).replaceAll("<name>", name);
             }
+        }
+        else if (mSimple.matches()) {
+            String name = mSimple.group(1);
+            String output = mSimple.group(2);
+            
+            if (commands.get(name) != null) {
+                try {
+                    Command o = (Command) commands.get(name).clone();
+
+                    if (o.getLevel().getWeight() <= level) {
+                        if (!generateCommand(name,output).equals(o)) {
+                            edited = true;
+                        }
+                        else {
+                            feedback += errorFail + " No were changes were made.";
+                        }
+                    }
+                    else {
+                        feedback += errorFail + noPermission;
+                    }
+                } catch (CloneNotSupportedException ex) {
+                    Logger.getLogger(CommandList.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+            else {
+                feedback += (errorFail + doesntExist).replaceAll("<name>", name);
+            }
+        }
+        else if (mName.matches()) {
+            feedback += errorFail + noOutput;
         }
         else {
             feedback += errorFail + noName;
@@ -200,28 +239,8 @@ public class CommandList {
         return result;
     }
     
-    private Pair<String, ArrayList<String>> splitParams(String parameters) {
-        ArrayList<String> fieldParameters = new ArrayList<>();
-
-        Pattern p = Pattern.compile("^\\u003c(.*?)\\u003e"); //Pattern for parameter:value pairs "<param:value>"
-        Matcher m = p.matcher(parameters);
-
-        while (m.find()) {//Finds all parameter value pairs and adds to to an array
-            fieldParameters.add(m.group(0));
-            parameters = parameters.replaceFirst(m.group(0), "").trim();
-            m = p.matcher(parameters);
-        }
-        
-        Pair<String, ArrayList<String>> pair = new Pair<>(parameters, fieldParameters);
-        
-        return pair;
-    }
-    
-    private Pair<String, Command> generateCommand(String name, ArrayList<String> fieldParameters, String output) {
-        
-        String feedback = "";
+    private Command generateCommand(String name, String output) {
         Command c;
-        ArrayList<String> fields = new ArrayList<>();
         
         if (commands.get(name) == null) {
             c = new Command();
@@ -232,71 +251,97 @@ public class CommandList {
             c = commands.get(name);
         }
         
-        if (!fieldParameters.isEmpty() && fieldParameters.size() > 0) { //Check if there were parameter:value pairs
-            
-            //Pattern for valid parameter and some field
-            Pattern p = Pattern.compile("\\u003c(level|access|visibility|global|delay)\\u003a\\w+\\u003e",
-                            Pattern.CASE_INSENSITIVE |
-                            Pattern.UNICODE_CASE );
-
-            for (String s : fieldParameters) { //Iterate through each parameter:value pair
-                Matcher m = p.matcher(s);
-                if (m.matches()) { //Checks if the parameter is valid and has a value
-
-                    //Separate the parameter:value pair into field and value
-                    String[] paramPair = s.replaceFirst("<", "").replaceFirst(">", "").split(":");
-                    String field = paramPair[0];
-                    String value = paramPair[1];
-
-                    //Find the field and set the value to it
-                    if (field.equalsIgnoreCase("level")) {
-                        try {
-                            c.setLevel(value);
-                        }
-                        catch (IllegalArgumentException e) {
-                            fields.add(field);
-                        }
-                    }
-                    else if (field.equalsIgnoreCase("access")) {
-                        try {
-                            c.setAccess(value);
-                        }
-                        catch (IllegalArgumentException e) {
-                            fields.add(field);
-                        }
-                    }
-                    else if (field.equalsIgnoreCase("global")) {
-                        try {
-                            c.setGlobal(value);
-                        }
-                        catch (IllegalArgumentException e) {
-                            fields.add(field);
-                        }
-                    }
-                    else if (field.equalsIgnoreCase("delay")) {
-                        try {
-                            c.setDelay(value);
-                        }
-                        catch (Exception e) {
-                            fields.add(field);
-                        }
-                    }
-                    
-                    
-                }
-            }
+        if (!output.isEmpty()) {
+            c.setOutput(output);
+        }
+        
+        return c;
+    }
+    
+    private Command generateCommand(String name, String params, String output) {
+        Command c;
+        
+        if (commands.get(name) == null) {
+            c = new Command();
+            c.setName(name);
+            c.setOutput(output);
+        }
+        else {
+            c = commands.get(name);
+        }
+        
+        Matcher m = Util.pLevel.matcher(params);
+        if (m.matches()) {
+            c.setLevel(m.group(1));
+        }
+        
+        m = Util.pAccess.matcher(params);
+        if (m.matches()) {
+            c.setAccess(m.group(1));
+        }
+        
+        m = Util.pGlobal.matcher(params);
+        if (m.matches()) {
+            c.setGlobal(m.group(1));
+        }
+        
+        m = Util.pDelay.matcher(params);
+        if (m.matches()) {
+            c.setDelay(m.group(1));
         }
         
         if (!output.isEmpty()) {
             c.setOutput(output);
         }
+        
+        return c;
+    }
+    
+    public String similar(String message) {
+        String name = "NOT FOUND";
+        int low = 100;
+        int result;
+        
+        for (Map.Entry<String, Command> pair : commands.entrySet()) {
+            result = distance(message, pair.getKey());
+            System.out.println("The difference between " + message + " and " + pair.getKey() + " is " + result);
             
-        if (!fields.isEmpty()) {
-            feedback = invalidField.replace("<fields>", fields.toString().replace("[","").replace("]",""));
+            if (result < low) {
+                low = result;
+                name = pair.getKey();
+            }
         }
         
-        Pair<String, Command> pair = new Pair<>(feedback, c);
+        int threshold = (int) Math.round(Math.sqrt(name.length()));
         
-        return pair;
+        if (low <= threshold) {
+            return name;
+        }
+        
+        return "NOT FOUND";
     }
+    
+    public int distance(String a, String b) {
+        a = a.toLowerCase();
+        b = b.toLowerCase();
+        
+        int[] costs = new int [b.length() + 1];
+        
+        for (int j = 0; j < costs.length; j++) {
+            costs[j] = j;
+        }
+        
+        for (int i = 1; i <= a.length(); i++) {
+            costs[0] = i;
+            int nw = i - 1;
+            
+            for (int j = 1; j <= b.length(); j++) {
+                int cj = Math.min(1 + Math.min(costs[j], costs[j - 1]), a.charAt(i - 1) == b.charAt(j - 1) ? nw : nw + 1);
+                nw = costs[j];
+                costs[j] = cj;
+            }
+        }
+        
+        return costs[b.length()];
+    } 
 }
