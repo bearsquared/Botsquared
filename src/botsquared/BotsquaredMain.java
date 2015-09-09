@@ -1,6 +1,5 @@
 package botsquared;
 
-import org.jibble.pircbot.*;
 
 /**
  * Creates the bot, connects it to Twitch, and has it join a channel.
@@ -18,9 +17,9 @@ public class BotsquaredMain {
 		bot.setVerbose(true);
 
 		//Connect to the IRC server
-		bot.connect("irc.twitch.tv", 6667, "oauth:x17ljvxnike9v1o7kwbhpklo8pk1u6");
+		bot.connect("auth code here");
 
-		bot.joinChannel("#botsquared");
+		bot.joinChannel("#bearsquared");
 
 	}
 

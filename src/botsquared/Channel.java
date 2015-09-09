@@ -1,20 +1,21 @@
 package botsquared;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Random;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 public class Channel {
     private String name;
     private CommandList list = new CommandList();
     private int globalDelay = 5;
     private transient long globalTimeout = 0L;
-    private boolean moderate = false;
+    private Moderate moderate = new Moderate();
     private String subMessage = "(not set)";
     private ArrayList<String> quotes = new ArrayList<>();
     private RepeatList repeatList = new RepeatList();
-    private transient ArrayList<String> modList = new ArrayList<>();
-    private transient ArrayList<String> superList = new ArrayList<>();
-    private transient ArrayList<String> permitList = new ArrayList<>();
+    private transient CopyOnWriteArraySet<String> mods = new CopyOnWriteArraySet<>();
+    private transient CopyOnWriteArraySet<String> subs = new CopyOnWriteArraySet<>();
     private transient Poll poll = new Poll();
     
     public Channel() {
@@ -23,6 +24,56 @@ public class Channel {
     
     public Channel(String name) {
         this.name = name;
+    }
+    
+    public void addMods(String... mods) {
+        Collections.addAll(this.mods, mods);
+    }
+    
+    public void addSubscriber(String user) {
+        subs.add(user);
+    }
+    
+     /**
+     * Checks to see if a given user is a moderator of a channel.
+     *
+     * @param user The user to check.
+     * @return True if the user is a mod, else false.
+     */
+    public boolean isMod(String user) {
+        for (String s : mods) {
+            if (user.equalsIgnoreCase(s)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+    * Checks if the sender is the owner of the channel.
+    * 
+    * @param user
+    * @return True if the user is the owner, else false.
+    */
+   public boolean isOwner(String user) {
+        String o;
+        o = name.replace("#", "");
+        return o.equalsIgnoreCase(user);
+   }
+    
+    /**
+     * Checks to see if a given user is a subscriber to a channel.
+     *
+     * @param user
+     * @return True if the user is a subscriber, else false.
+     */
+    public boolean isSubscriber(User user) {
+        for (String s : subs) {
+            if (s.equals(user.getNick().toLowerCase())) {
+                return true;
+            }
+        }
+        return false;
     }
     
     public String getName() {
@@ -41,7 +92,7 @@ public class Channel {
         return globalTimeout;
     }
     
-    public boolean getModerate() {
+    public Moderate getModerate() {
         return moderate;
     }
     
@@ -69,16 +120,12 @@ public class Channel {
         return repeatList;
     }
     
-    public ArrayList<String> getModList() {
-        return modList;
+    public CopyOnWriteArraySet<String> getModList() {
+        return mods;
     }
     
-    public ArrayList<String> getSuperList() {
-        return superList;
-    }
-    
-    public ArrayList<String> getPermitList() {
-        return permitList;
+    public CopyOnWriteArraySet<String> getSubscriberList() {
+        return subs;
     }
     
     public Poll getPoll() {
@@ -101,12 +148,12 @@ public class Channel {
         globalTimeout = l;
     }
     
-    public void setModerate(boolean b) {
-        moderate = b;
+    public void setModerate(Moderate moderate) {
+        this.moderate = moderate;
     }
     
-    public void setModList(ArrayList<String> modList) {
-        this.modList = modList;
+    public void setModList(CopyOnWriteArraySet<String> modList) {
+        this.mods = modList;
     }
     
     public void setSubMessage(String subMessage) {
@@ -121,12 +168,8 @@ public class Channel {
         this.repeatList = repeatList;
     }
     
-    public void setSuperList(ArrayList<String> superList) {
-        this.superList = superList;
-    }
-    
-    public void setPermitList(ArrayList<String> permitList) {
-        this.permitList = permitList;
+    public void setSubscriberList(CopyOnWriteArraySet<String> subscriberList) {
+        this.subs = subscriberList;
     }
     
     public void setPoll(Poll poll) {
@@ -134,10 +177,10 @@ public class Channel {
     }
     
     public void clearModList() {
-        modList.clear();
+        mods.clear();
     }
     
-    public void clearSuperList() {
-        superList.clear();
+    public void clearSubscriberList() {
+        subs.clear();
     }
 }

@@ -15,23 +15,17 @@ public class Command implements Cloneable {
     * 
     * The channel owner can change the level of a command from MOD to OWNER or vice versa but may not change the level of higher level commands.
     * 
-    * NATIVE allows no one to delete the command, and allows only the owner to edit the access, visibility, global, and delay fields.
+    * NATIVE allows no one to delete the command, or edit any of the fields.
     * 
-    * FUNCTIONAL allows no one to delete the command and only edit the Access field.
-    * This Level indicates that a command may accept parameters and/or perform a function.
-    * A FUCNTIONAL command that is called while the bot is in quiet mode or disabled will still perform any function associated with it.
-    * Although it will perform the function it will not send any messages in chat with feedback.
-    * 
-    * COMPLEX allows no one to delete the command or edit any of the fields. These commands may be disabled.
-    * This Level is used to indicate that the command has a complex output that is deterministic.
+    * COMPLEX allows no one to delete the command or edit any of the fields.
+    * These commands have outputs generated when called.
     * 
     * The Level OP is assigned to a command without one explicitly assigned. You can only assign a command a Level of OP or OWNER.
     */
     public enum Level {
         MOD (100, true),
         OWNER (200, true), 
-        NATIVE (400, false), 
-        FUNCTIONAL (500, false), 
+        NATIVE (400, false),
         COMPLEX (600, false);
         
         private final int weight;
@@ -133,8 +127,8 @@ public class Command implements Cloneable {
     }
     
     private String name; //unique command name
-    private Level level = Level.MOD; //who can edit or remove this command | *OP, OWNER, NATIVE, FUNCTIONAL, LIST
-    private Access access = Access.PUBLIC; //who can call command | *ALL, OP, OWNER
+    private Level level = Level.MOD; //who can edit or remove this command.
+    private Access access = Access.PUBLIC; //who can call command.
     private boolean global = true; //determines if command acknowledges global timeout | *true, false
     private int delay = 30; //coeffecient that determines the interval at which this command may be called | integer 0-3600, *30
     private transient long lastUsed = 0L; //stores system time the command was last used
@@ -142,6 +136,15 @@ public class Command implements Cloneable {
     
     public Command() {
         
+    }
+    
+    public Command(String name, Level level, Access access, boolean global, int delay, String output) {
+        this.name = name;
+        this.level = level;
+        this.access = access;
+        this.global = global;
+        this.delay = delay;
+        this.output = output;
     }
     
     public Command(Command c) {

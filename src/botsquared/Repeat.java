@@ -11,7 +11,7 @@ package botsquared;
  */
 public class Repeat {
     private String name;
-    private int interval = 60;//time between messages in seconds, minimum 60
+    private int interval = 1;//time between messages in minutes, minimum 1
     private String output;
     private transient int msl = 0; //Messages Since Last: keeps track of how many messages been sent since this the last message
     
@@ -36,26 +36,26 @@ public class Repeat {
     }
     
     public void setInterval(int interval) {
-        if (interval > 60) {
+        if (interval > 1) {
             this.interval = interval;
         }
         else {
-            this.interval = 60;
+            this.interval = 1;
         }
     }
     
     public void setInterval(String s) throws IllegalArgumentException {
         try {
             int i = Integer.parseInt(s);
-            if (i >= 60) {
+            if (i >= 1) {
                 interval = i;
             }
             else {
-               throw new IllegalArgumentException("0 to 3600"); 
+               throw new IllegalArgumentException("0 to 60"); 
             }
         }
         catch (NumberFormatException e) {
-            throw new IllegalArgumentException("0 to 3600");
+            throw new IllegalArgumentException("0 to 60");
         }
     }
     

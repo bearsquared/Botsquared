@@ -60,7 +60,6 @@ public class CommandList {
         
         return list;
     }
-
     
     public Pair<Boolean, String> addCommand(String message) {
         boolean errors = false;
@@ -131,9 +130,17 @@ public class CommandList {
                                     string.getValue(2).toString()).equals(o);
                     }
                     else if (string.getSize() == 2) {
-                        edited = !generateCommand(
+                        if (string.getValue(1).toString().startsWith("<")) {
+                            edited = !generateCommand(
                                     string.getValue(0).toString(),
-                                    string.getValue(1).toString()).equals(o);
+                                    string.getValue(1).toString(),
+                                    "").equals(o);
+                        }
+                        else {
+                            edited = !generateCommand(
+                                string.getValue(0).toString(),
+                                string.getValue(1).toString()).equals(o);
+                        }
                     }
                     else if (string.getSize() == 1) {
                         feedback += errorFail + noOutput;
@@ -251,7 +258,7 @@ public class CommandList {
             c.setDelay(m.group(1));
         }
         
-        if (!output.isEmpty()) {
+        if (!output.isEmpty() && !output.equals("")) {
             c.setOutput(output);
         }
         
