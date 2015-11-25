@@ -2,11 +2,12 @@
 package botsquared;
 
 import java.io.*;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class OutputThread extends Thread {
     
     private BotSkeleton bot = null;
-    private Queue outQueue = null;
+    private LinkedBlockingQueue<String> outQueue = new LinkedBlockingQueue<>();
     
     /**
      * Constructs an OutputThread for the underlying PircBot.  All messages
@@ -17,7 +18,7 @@ public class OutputThread extends Thread {
      * @param bot The underlying PircBot instance.
      * @param outQueue The Queue from which we will obtain our messages.
      */
-    OutputThread(BotSkeleton bot, Queue outQueue) {
+    OutputThread(BotSkeleton bot, LinkedBlockingQueue<String> outQueue) {
         this.bot = bot;
         this.outQueue = outQueue;
         this.setName(this.getClass() + "-Thread");
@@ -30,7 +31,7 @@ public class OutputThread extends Thread {
      * @param bot The underlying PircBot instance.
      * @param out The BufferedOutputStream to write to.
      * @param line The line to be written. "\r\n" is appended to the end.
-     * @param encoding The charset to use when encoing this string into a
+     * @param encoding The charset to use when encoding this string into a
      *                 byte array.
      */
     static void sendRawLine(BotSkeleton bot, BufferedWriter bWriter, String line) {
@@ -52,6 +53,7 @@ public class OutputThread extends Thread {
      * This method starts the Thread consuming from the outgoing message
      * Queue and sending lines to the server.
      */
+    @Override
     public void run() {
         try {
             boolean running = true;
@@ -59,7 +61,7 @@ public class OutputThread extends Thread {
                 // Small delay to prevent spamming of the channel
                 Thread.sleep(bot.getMessageDelay());
                 
-                String line = (String) outQueue.next();
+                String line = outQueue.take();
                 if (line != null) {
                     bot.sendRawLine(line);
                 }

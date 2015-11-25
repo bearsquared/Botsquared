@@ -5,18 +5,48 @@
  */
 package botsquared;
 
+import java.util.Objects;
+
 /**
  *
  * @author Graham
  */
 public class Repeat {
-    private String name;
-    private int interval = 1;//time between messages in minutes, minimum 1
-    private String output;
-    private transient int msl = 0; //Messages Since Last: keeps track of how many messages been sent since this the last message
+    private final int MIN = 1; //Minium interval between messages
     
-    public String getName() {
-        return name;
+    private int interval = MIN;//time between messages in minutes, minimum 5
+    private String output;
+    
+    Repeat() {
+        
+    }
+    
+    Repeat(String output) {
+        this.output = output;
+    }
+    
+    Repeat(int interval, String output) {
+        this.interval = interval;
+        this.output = output;
+    }
+    
+    @Override
+    public boolean equals(Object r) {
+        boolean bool = false;
+        
+        if (r instanceof Repeat) {
+            Repeat ptr = (Repeat) r;
+            bool = ptr.getOutput().equalsIgnoreCase(this.output);
+        }
+        
+        return bool;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 73 * hash + Objects.hashCode(this.output);
+        return hash;
     }
     
     public int getInterval() {
@@ -27,43 +57,31 @@ public class Repeat {
         return output;
     }
     
-    public int getMsl() {
-        return msl;
-    }
-    
-    public void setName(String name) {
-        this.name = name;
-    }
-    
     public void setInterval(int interval) {
-        if (interval > 1) {
+        if (interval > MIN) {
             this.interval = interval;
         }
         else {
-            this.interval = 1;
+            this.interval = MIN;
         }
     }
     
     public void setInterval(String s) throws IllegalArgumentException {
         try {
             int i = Integer.parseInt(s);
-            if (i >= 1) {
-                interval = i;
+            if (i >= MIN) {
+                interval = MIN;
             }
             else {
-               throw new IllegalArgumentException("0 to 60"); 
+               throw new IllegalArgumentException(MIN + " to 60"); 
             }
         }
         catch (NumberFormatException e) {
-            throw new IllegalArgumentException("0 to 60");
+            throw new IllegalArgumentException(MIN + " to 60");
         }
     }
     
     public void setOutput(String output) {
         this.output = output;
-    }
-    
-    public void setMsl(int msl) {
-        this.msl = msl;
     }
 }

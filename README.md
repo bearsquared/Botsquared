@@ -17,7 +17,7 @@ The Name must be **at least 3 letters or numbers and preceded by a '!'**. For ex
 
 The Level field determines who can edit or remove the command. The Level field can have the value **MOD, OWNER, NATIVE, or COMPLEX**. Custom commands may only have a Level of MOD, or OWNER which means that the command may only be edited or removed by a moderator, or channel owner respectively. The values NATIVE, COMPLEX are only used for commands that built into the bot and may not be edited, or removed by anyone.
 
-The Access field determines who may call the command. The Access field can have the value **PUBLIC, SUB, MOD, or OWNER**. Commands with the Access PUBLIC may be called by anyone. ~~Commands with the Access SUB may be called by subscribers, moderators, or the channel owner.~~ *Note: Due to recent changes to Twitch.tv messaging interface the bot is currently unable to detect a user as a subscriber.* Commands with the Access MOD may be called by moderators, or the channel owner. Commands with the Access OWNER may be called by only the channel owner.
+The Access field determines who may call the command. The Access field can have the value **PUBLIC, SUB, MOD, or OWNER**. Commands with the Access PUBLIC may be called by anyone. Commands with the Access SUB may be called by subscribers, moderators, or the channel owner.
 
 By default, the bot will only respond to a command every 5 seconds. There is a global delay of 5 seconds between each command. The Global field can be either **true or false**. If the Global field is true, the bot will respect the global delay for the command. If the Global field is false, the bot will ignore the global delay for the command. 
 
@@ -55,14 +55,10 @@ The Output is what the bot will say when called. The Output can be anything as l
 
 -*!vote:* This allows a user to vote in a poll. To vote, type "!vote" followed by the number of the option you would like to vote for. In the example poll above, `!vote 1` would cast one vote for "red" where "!vote 2" would cast one vote for "blue". Users may only vote once per poll. If a poll is reset, they may vote again.
 
-**!quote:** This command allows users to save, and display quotes of the channel owner. **COMING SOON.**
-
-**!repeat:** This command allows moderators, or the channel owner to create messages that automatically posted at an interval. **COMING SOON.**
-
 **!subnotify:** This command allows you to set what the bot posts when you have a subscriber. To set the subscriber notification, type "!subnotify" followed by your message. Every instance of `<user>` in the message will be replaced by the name of the subscriber.
 
 **!uptime:** This command will display the amount of time the stream has been live.
 
 # Credits
-[PircBot Java API](http://www.jibble.org/pircbot.php) is the framework Botsquared is built upon.
+[PircBot Java API](http://www.jibble.org/pircbot.php) is what the Botsquared framework is based on.
 [GSON](https://code.google.com/p/google-gson/) for parsing JSON.

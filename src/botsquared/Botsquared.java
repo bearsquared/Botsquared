@@ -127,8 +127,8 @@ public class Botsquared extends BotSkeleton {
         }
         
         @Override
-        public void onContinuedSubscriber(String channel, String message, String user) {
-            sendMessage(channel, "Thanks " + user + " for subscribing for " + user + " months in a row!");
+        public void onContinuedSubscriber(String channel, String months, String user) {
+            sendMessage(channel, "Thanks " + user + " for subscribing for " + months + " months in a row!");
         }
         
         public int checkWeight(String channel, String sender) {
@@ -187,31 +187,25 @@ public class Botsquared extends BotSkeleton {
                     }
 
                     else if (c.getName().equalsIgnoreCase("!uptime")) {
-                        String html = "https://api.twitch.tv/kraken/streams/" + channel.replaceFirst("#", "");
+                        
+                        StreamAPI stream = Util.getUptime(channel);
+                        
+                        if (stream.getStream() != null) {
+                            DateTimeFormatter fmt = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
-                        try {
-                            String json = Jsoup.connect(html).ignoreContentType(true).execute().body();
-                            Gson gson = new Gson();
-                            StreamAPI stream = gson.fromJson(json, StreamAPI.class);
-                            if (stream.getStream() != null) {
-                                DateTimeFormatter fmt = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
+                            DateTime created = fmt.parseDateTime(stream.getStream().getCreated_At());
+                            created = created.withZoneRetainFields(DateTimeZone.UTC);
 
-                                DateTime created = fmt.parseDateTime(stream.getStream().getCreated_At());
-                                created = created.withZoneRetainFields(DateTimeZone.UTC);
+                            DateTime dt = new DateTime();
 
-                                DateTime dt = new DateTime();
+                            Period uptime = new Period(created,dt);
 
-                                Period uptime = new Period(created,dt);
-
-                                sendMessage(channel, channel.replaceFirst("#", "")
-                                        + c.getOutput()
-                                        + String.format("%d hours, %d minutes, and %d seconds.", uptime.getHours(), uptime.getMinutes(), uptime.getSeconds()));
-                            }
-                            else {
-                                sendMessage(channel, "The channel is not online.");
-                            }
-                        } catch (IOException ex) {
-                            Logger.getLogger(Botsquared.class.getName()).log(Level.SEVERE, null, ex);
+                            sendMessage(channel, channel.replaceFirst("#", "")
+                                    + c.getOutput()
+                                    + String.format("%d hours, %d minutes, and %d seconds.", uptime.getHours(), uptime.getMinutes(), uptime.getSeconds()));
+                        }
+                        else {
+                            sendMessage(channel, "The channel is not online.");
                         }
                     }
                 }
@@ -235,7 +229,7 @@ public class Botsquared extends BotSkeleton {
          */
         public void handleModerate(String channel, String message) {
             Channel c = getChannelHandler().getChannel(channel);
-            String parameter = Util.splitMessage(message).getValue(1).toString();
+            String parameter = Util.splitAERMessage(message).getValue(1).toString();
             
             if (c.isMod(this.getName())) {
                 if (parameter.contains("links") || parameter.contains("caps")) {
@@ -279,7 +273,7 @@ public class Botsquared extends BotSkeleton {
             Channel c = getChannelHandler().getChannel(channel);
             
             if (c.getModerate().getLinks()) { //Check if moderate is true
-                String parameter = Util.splitMessage(message).getValue(1).toString();
+                String parameter = Util.splitAERMessage(message).getValue(1).toString();
 
                 if(!parameter.isEmpty() && parameter.length() > 0) {
                     if (!c.getModerate().getPermitList().contains(parameter)) {
@@ -298,7 +292,7 @@ public class Botsquared extends BotSkeleton {
         
         public void handlePoll(String channel, String message) {
             Channel c = getChannelHandler().getChannel(channel);
-            String parameter = Util.splitMessage(message).getValue(1).toString();
+            String parameter = Util.splitAERMessage(message).getValue(1).toString();
             
             if (parameter.startsWith("open")) {
                 parameter = parameter.replace("open", "").trim();
@@ -331,7 +325,7 @@ public class Botsquared extends BotSkeleton {
         
         public void handleQuote(String channel, String message) {
             Channel c = getChannelHandler().getChannel(channel);
-            String parameter = Util.splitMessage(message).getValue(1).toString();
+            String parameter = Util.splitAERMessage(message).getValue(1).toString();
             
             if (!parameter.isEmpty() && parameter.length() > 0) {
                 if (!parameter.startsWith("remove ")) {
@@ -361,7 +355,7 @@ public class Botsquared extends BotSkeleton {
         
         public void handleAER(String channel, String message, String sender) {
             Channel c = getChannelHandler().getChannel(channel);
-            Tuple aer = Util.splitMessage(message);
+            Tuple aer = Util.splitAERMessage(message);
             
             if (aer.getSize() == 3) {
                 String type = aer.getValue(0).toString();
@@ -374,7 +368,7 @@ public class Botsquared extends BotSkeleton {
                         p1 = c.getList().addCommand(params);
                     }
                     else if (type.equalsIgnoreCase("!repeat")) {
-                        //p1 = c.getList().addRepeat(params);
+                        p1 = c.getRepeatList().add(params);
                     }
                     
                     if (p1.getValue0()) {
@@ -402,7 +396,7 @@ public class Botsquared extends BotSkeleton {
                         p1 = c.getList().removeCommand(params, checkWeight(channel, sender));
                     }
                     else if (type.equalsIgnoreCase("!repeat")) {
-                        //p1 = c.getList().addRepeat(params);
+                        p1 = c.getRepeatList().remove(params);
                     }
                     
                     if (p1.getValue0()) {
@@ -434,7 +428,7 @@ public class Botsquared extends BotSkeleton {
         
         public void handleSubNotify(String channel, String message) {
             Channel c = getChannelHandler().getChannel(channel);
-            String parameter = Util.splitMessage(message).getValue(1).toString();
+            String parameter = Util.splitAERMessage(message).getValue(1).toString();
             
             if(!parameter.isEmpty() && parameter.length() > 0) {
                 c.setSubMessage(parameter);
@@ -445,7 +439,7 @@ public class Botsquared extends BotSkeleton {
         
         public void handleVote(String channel, String sender, String message) throws IllegalArgumentException {
             Channel c = getChannelHandler().getChannel(channel);
-            String parameter = Util.splitMessage(message).getValue(1).toString();
+            String parameter = Util.splitAERMessage(message).getValue(1).toString();
             
             try {
                 if(!parameter.isEmpty() && parameter.length() > 0) {

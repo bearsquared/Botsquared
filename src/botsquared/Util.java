@@ -5,12 +5,17 @@
  */
 package botsquared;
 
+import com.google.gson.Gson;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.javatuples.Pair;
 import org.javatuples.Triplet;
 import org.javatuples.Tuple;
 import org.javatuples.Unit;
+import org.jsoup.Jsoup;
 
 /**
  *
@@ -26,11 +31,15 @@ public class Util {
     public static final String hasName = "(^![a-zA-Z0-9_]{3,})[\\s\\S]*?";
     public static final String hasNameParams = "(^![a-zA-Z0-9_]{3,})\\s+(<.*>)$";
     public static final String exactName = "(^![a-zA-Z0-9_]{3,}$)";
-    public static final String aerP = "(^![a-zA-Z0-9_]{3,})\\s+(add|edit|remove)\\s+((?![<>]).+)";
+    public static final String aerP = "(^![a-zA-Z0-9_]{3,})\\s+(add|edit|remove)\\s+(.+)";
     public static final String levelP = "(?:<level:)(MOD|OWNER|NATIVE|COMPLEX)>";
     public static final String accessP = "(?:<access:)(PUBLIC|SUB|MOD|OWNER|BEARSQUARED)>";
     public static final String globalP = "(?:<global:)(true|false)>";
     public static final String delayP = "(?:<delay:)([0-9]+)>";
+    
+    public static final String repeat = "^(<.*>)?(?:\\s+)?((?![<>]).+)";
+    public static final String complexRepeat = "^(<.*>)\\s+((?![<>]).+)";
+    public static final String simpleRepeat = "^((?![<>]).+)";
     
     public static final Pattern pURL = Pattern.compile(url);
     public static final Pattern pExcCaps = Pattern.compile(excCaps);
@@ -46,6 +55,10 @@ public class Util {
     public static final Pattern pAccess = Pattern.compile(accessP, Pattern.CASE_INSENSITIVE);
     public static final Pattern pGlobal = Pattern.compile(globalP, Pattern.CASE_INSENSITIVE);
     public static final Pattern pDelay = Pattern.compile(delayP);
+    
+    public static final Pattern pRepeat = Pattern.compile(repeat);
+    public static final Pattern pComplexRepeat = Pattern.compile(complexRepeat);
+    public static final Pattern pSimpleRepeat = Pattern.compile(simpleRepeat);
         
     /**
      * Checks if a message contains a URL
@@ -54,15 +67,6 @@ public class Util {
      * @return 
      */
     public static boolean isLink(String message) {
-        /*String [] parts = message.split("\\s+");
-        for( String item : parts ) try {
-            Matcher matcher = pURL.matcher(item);
-            if(matcher.matches()) {
-                return true; 
-            }
-        } catch (RuntimeException e) {
-
-        }*/
         Matcher matcher = pURL.matcher(message);
         
         return matcher.find();
@@ -88,8 +92,38 @@ public class Util {
         }
         return true;
     }
+    
+    public static boolean isOnline(String channel) {
+        String html = "https://api.twitch.tv/kraken/streams/" + channel.replaceFirst("#", "");
         
-    public static Tuple splitMessage(String message) {
+        try {
+            String json = Jsoup.connect(html).ignoreContentType(true).execute().body();
+            Gson gson = new Gson();
+            StreamAPI stream = gson.fromJson(json, StreamAPI.class);
+            return stream.getStream() != null;
+        } catch (IOException ex) {
+            Logger.getLogger(Botsquared.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        return false;
+    }
+    
+    public static StreamAPI getUptime(String channel) {
+        String html = "https://api.twitch.tv/kraken/streams/" + channel.replaceFirst("#", "");
+        
+        try {
+            String json = Jsoup.connect(html).ignoreContentType(true).execute().body();
+            Gson gson = new Gson();
+            StreamAPI stream = gson.fromJson(json, StreamAPI.class);
+            return stream;
+        } catch (IOException ex) {
+            Logger.getLogger(Botsquared.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        return null;
+    }
+        
+    public static Tuple splitAERMessage(String message) {
         Matcher mAER = pAER.matcher(message);
         Matcher mComplex = pComplex.matcher(message);
         Matcher mNameParams = pNameParams.matcher(message);
@@ -112,6 +146,23 @@ public class Util {
             return new Unit<>(mName.group(1));
         }
         else {
+            return new Unit<>("ERROR");
+        }
+    }
+    
+    public static Tuple splitRepeatMessage(String message) {
+        Matcher mComplexRepeat = pComplexRepeat.matcher(message);
+        Matcher mSimpleRepeat = pSimpleRepeat.matcher(message);
+        
+        if (mComplexRepeat.matches()) {
+            return new Pair<>(mComplexRepeat.group(2), mComplexRepeat.group(1));
+        }
+        else if (mSimpleRepeat.matches()) {
+            System.out.println("GOT THERE: " + mSimpleRepeat.group(1));
+            return new Unit<>(mSimpleRepeat.group(1));
+        }
+        else {
+            System.out.println("THERE WAS AN ERROR");
             return new Unit<>("ERROR");
         }
     }

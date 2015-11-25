@@ -17,9 +17,9 @@ public class BotsquaredMain {
 		bot.setVerbose(true);
 
 		//Connect to the IRC server
-		bot.connect("auth code here");
+		bot.connect("oauth:x17ljvxnike9v1o7kwbhpklo8pk1u6");
 
-		bot.joinChannel("#bearsquared");
+		bot.joinChannel("#botsquared");
 
 	}
 

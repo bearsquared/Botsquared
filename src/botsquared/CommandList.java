@@ -15,6 +15,7 @@ import org.javatuples.*;
 public class CommandList {
     
     private Map<String,Command> commands = new HashMap<>();
+    private String channel = null;
     
     private static final String errorFail = "I encountered an error and was unable to <mode> your command.";
     private static final String exists = " The command <name> already exists.";
@@ -26,6 +27,14 @@ public class CommandList {
     private static final String noParameters = " I was unable to find any valid parameters.";
     private static final String success = "Your command has been <mode>ed successfully <errors> errors.";
     
+    public String getChannel() {
+        return channel;
+    }
+    
+    public void setChannel(String channel) {
+        this.channel = channel;
+    }
+    
     public Map<String,Command> getCommands() {
         return commands;
     }
@@ -35,7 +44,7 @@ public class CommandList {
     }
     
     public String toList () {
-        String list;
+        /*String list;
         if (!commands.isEmpty()) {
             boolean notFirst = false;
             
@@ -48,7 +57,7 @@ public class CommandList {
                 else {
                     notFirst = true;
                 }
-                
+        
                 list += entry.getKey();
             }
             
@@ -58,7 +67,45 @@ public class CommandList {
             list = "There are no custom commands.";
         }
         
-        return list;
+        return list;*/
+        
+        String output;
+        String list;
+        
+        if (!commands.isEmpty()) {
+            boolean notFirst = false;
+            
+            output = "Commands for " + channel + ":\n";
+            list = "Here is a list of commands: ";
+            
+            for (Map.Entry<String, Command> entry : commands.entrySet()) {
+                if (notFirst) {
+                    list += ", ";
+                }
+                else {
+                    notFirst = true;
+                }
+        
+                list += entry.getKey();
+                output += entry.getKey() + "\n";
+            }
+                
+            list += ".";
+            
+            output = Pastebin.generate(channel, output);
+            
+            if (output.equalsIgnoreCase("ERROR")) {
+                output = list;
+            }
+            else {
+                output = "You can find the commands for the channel here: " + output;
+            }
+        }
+        else {
+            output = "There are no custom commands.";
+        }
+        
+        return output;
     }
     
     public Pair<Boolean, String> addCommand(String message) {
@@ -66,7 +113,7 @@ public class CommandList {
         boolean added = false;
         String feedback = "";
         
-        Tuple string = Util.splitMessage(message);
+        Tuple string = Util.splitAERMessage(message);
         
         if (commands.get(string.getValue(0).toString()) == null) {
             if (string.getSize() == 3) {
@@ -83,6 +130,7 @@ public class CommandList {
                             string.getValue(1).toString()));
             }
             else if (string.getSize() == 1) {
+                errors = true;
                 if (!string.getValue(0).toString().equalsIgnoreCase("ERROR")) {
                     feedback += errorFail + noOutput;
                 }
@@ -92,7 +140,8 @@ public class CommandList {
             }
         }
         else {
-            feedback += errorFail + (errorFail + exists).replaceAll("<name>", string.getValue(0).toString());
+            errors = true;
+            feedback += (errorFail + exists).replaceAll("<name>", string.getValue(0).toString());
         }
         
         if (added) {
@@ -116,7 +165,7 @@ public class CommandList {
         boolean edited = false;
         String feedback = "";
         
-        Tuple string = Util.splitMessage(message);
+        Tuple string = Util.splitAERMessage(message);
         
         if (commands.get(string.getValue(0).toString()) != null) {
             try {
@@ -143,14 +192,17 @@ public class CommandList {
                         }
                     }
                     else if (string.getSize() == 1) {
+                        errors = true;
                         feedback += errorFail + noOutput;
                     }
                     
                     if (!edited) {
+                        errors = true;
                         feedback += errorFail + " No were changes were made.";
                     }
                 }
                 else {
+                    errors = true;
                     feedback += errorFail + noPermission;
                 }
             } catch (CloneNotSupportedException ex) {
@@ -158,7 +210,8 @@ public class CommandList {
             }
         }
         else {
-            feedback += errorFail + (errorFail + doesntExist).replaceAll("<name>", string.getValue(0).toString());
+            errors = true;
+            feedback += (errorFail + doesntExist).replaceAll("<name>", string.getValue(0).toString());
         }
         
         if (edited) {

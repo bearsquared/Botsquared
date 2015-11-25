@@ -3,9 +3,10 @@ package botsquared;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Random;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Channel {
+    private transient BotSkeleton bot = null;
     private String name;
     private CommandList list = new CommandList();
     private int globalDelay = 5;
@@ -13,16 +14,19 @@ public class Channel {
     private Moderate moderate = new Moderate();
     private String subMessage = "(not set)";
     private ArrayList<String> quotes = new ArrayList<>();
-    private RepeatList repeatList = new RepeatList();
-    private transient CopyOnWriteArraySet<String> mods = new CopyOnWriteArraySet<>();
-    private transient CopyOnWriteArraySet<String> subs = new CopyOnWriteArraySet<>();
+    private RepeatList repeatList = null;
+    private transient CopyOnWriteArrayList<String> mods = new CopyOnWriteArrayList<>();
+    private transient CopyOnWriteArrayList<String> subs = new CopyOnWriteArrayList<>();
     private transient Poll poll = new Poll();
     
-    public Channel() {
+    private transient boolean canSend = true;
+    private transient int mslr = 0;
+    
+    Channel() {
         
     }
     
-    public Channel(String name) {
+    Channel(String name) {
         this.name = name;
     }
     
@@ -31,7 +35,15 @@ public class Channel {
     }
     
     public void addSubscriber(String user) {
-        subs.add(user);
+        if (!isSubscriber(user)) {
+            subs.add(user);
+        }
+    }
+    
+    public void removeSubscriber(String user) {
+        if (isSubscriber(user)) {
+            subs.remove(user);
+        }
     }
     
      /**
@@ -74,6 +86,31 @@ public class Channel {
             }
         }
         return false;
+    }
+    
+    public boolean isSubscriber(String user) {
+        for (String s : subs) {
+            if (s.equals(user.toLowerCase())) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    public void checkRepeat() {
+        if (!repeatList.getList().isEmpty()) {
+            if (!canSend) {
+                mslr++;
+                if (mslr >= 30) {
+                    canSend = true;
+                    mslr = 0;
+                    repeatList.consume();
+                }
+            }
+            else {
+                repeatList.consume();
+            } 
+        }
     }
     
     public String getName() {
@@ -120,16 +157,24 @@ public class Channel {
         return repeatList;
     }
     
-    public CopyOnWriteArraySet<String> getModList() {
+    public CopyOnWriteArrayList<String> getModList() {
         return mods;
     }
     
-    public CopyOnWriteArraySet<String> getSubscriberList() {
+    public CopyOnWriteArrayList<String> getSubscriberList() {
         return subs;
     }
     
     public Poll getPoll() {
         return poll;
+    }
+    
+    public boolean getCanSend() {
+        return canSend;
+    }
+    
+    public void setBot(BotSkeleton bot) {
+        this.bot = bot;
     }
     
     public void setName(String name) {
@@ -152,7 +197,7 @@ public class Channel {
         this.moderate = moderate;
     }
     
-    public void setModList(CopyOnWriteArraySet<String> modList) {
+    public void setModList(CopyOnWriteArrayList<String> modList) {
         this.mods = modList;
     }
     
@@ -168,12 +213,16 @@ public class Channel {
         this.repeatList = repeatList;
     }
     
-    public void setSubscriberList(CopyOnWriteArraySet<String> subscriberList) {
+    public void setSubscriberList(CopyOnWriteArrayList<String> subscriberList) {
         this.subs = subscriberList;
     }
     
     public void setPoll(Poll poll) {
         this.poll = poll;
+    }
+    
+    public void setCanSend(boolean canSend) {
+        this.canSend = canSend;
     }
     
     public void clearModList() {

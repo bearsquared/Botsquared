@@ -3,9 +3,14 @@ package botsquared;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 public class ChannelHandler {
+    private BotSkeleton bot = null;
     private CopyOnWriteArraySet<Channel> channels = new CopyOnWriteArraySet<>();
     private CommandList natives = new CommandList();
     private CopyOnWriteArraySet<User> users = new CopyOnWriteArraySet<>();
+    
+    ChannelHandler (BotSkeleton bot) {
+        this.bot = bot;
+    }
     
     public void handleSubscriber(String channel, String user) {
         getChannel(channel).addSubscriber(user);
