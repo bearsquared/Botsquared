@@ -1,4 +1,3 @@
-
 package botsquared;
 
 import com.google.gson.Gson;
@@ -7,6 +6,7 @@ import java.io.*;
 import java.lang.reflect.Type;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class BotSkeleton implements ReplyConstants {
     
@@ -24,7 +24,7 @@ public class BotSkeleton implements ReplyConstants {
     private String password = null;
     
     // Outgoing
-    private Queue outQueue = new Queue();
+    private LinkedBlockingQueue<String> outQueue = new LinkedBlockingQueue<>();
     private long messageDelay = 1000;
     
     private InetAddress dccInetAdress = null;
@@ -39,7 +39,7 @@ public class BotSkeleton implements ReplyConstants {
     private String channelPrefixes = "#&+!";
     
     //Channel
-    private ChannelHandler channelHandler = new ChannelHandler();
+    private ChannelHandler channelHandler = new ChannelHandler(this);
     
     public BotSkeleton() {}
     
@@ -136,6 +136,7 @@ public class BotSkeleton implements ReplyConstants {
         }
         
         buildNatives();
+        //TODO start repeat timer
         
         this.onConnect();
     }
@@ -255,12 +256,13 @@ public class BotSkeleton implements ReplyConstants {
      * @see Colors
      */
     public final void sendMessage(String target, String message) {
-        outQueue.add("PRIVMSG " + target + " :" + message);
+        String line = "PRIVMSG " + target + " :" + message;
+        outQueue.add(line);
         if (message.startsWith("/me")) {
             handleLine(":" + getNick() + "!" + getNick() + "@" + getNick() + ".tmi.twitch.tv PRIVMSG " + target + " :\u0001ACTION " + message.substring(4) + "\u0001");
         }
         else {
-             handleLine(":" + getNick() + "!" + getNick() + "@" + getNick() + ".tmi.twitch.tv PRIVMSG " + target + " :" + message);
+            handleLine(":" + getNick() + "!" + getNick() + "@" + getNick() + ".tmi.twitch.tv PRIVMSG " + target + " :" + message);
         }
     }
     
@@ -369,7 +371,6 @@ public class BotSkeleton implements ReplyConstants {
                     }
                 }
                 else {
-                    // We don't know what this line means.
                     onUnknown(line);
                     // Return from the method;
                     return;
@@ -408,14 +409,15 @@ public class BotSkeleton implements ReplyConstants {
             if (sourceNick.equalsIgnoreCase("twitchnotify")) {
                 if (line.contains("subscribed") || line.contains("subscribed for") && !line.contains("resubscribed")) {
                     String user = content.split(" ")[0];
+                    String months = content.split(" ")[3];
 
                     channelHandler.handleSubscriber(target, user);
 
-                    if (line.contains("subscribed")) {
-                        this.onNewSubscriber(target, content, user);
+                    if (line.contains("subscribed for")) {
+                        this.onContinuedSubscriber(target, months, user);
                     }
                     else {
-                        this.onContinuedSubscriber(target, content, user);
+                        this.onNewSubscriber(target, content, user);
                     }
                 }
                 else if (line.contains("resubscribed")) {
@@ -423,7 +425,11 @@ public class BotSkeleton implements ReplyConstants {
                 }
                 return;
             }
-
+            
+            if (channelHandler.getChannel(target) != null) {
+                channelHandler.getChannel(target).checkRepeat();
+            }
+            
             this.onMessage(target, sourceNick, content);
         }
         else if (command.equals("PRIVMSG")) {
@@ -439,7 +445,7 @@ public class BotSkeleton implements ReplyConstants {
         else if (command.equals("JOIN")) {
             // Someone is joining a channel.
             String channel = target;
-            //this.addUser(channel, new User("", sourceNick));
+            //TODO add user to user list
             this.onJoin(channel, sourceNick, sourceLogin, sourceHostname);
         }
         else {
@@ -540,23 +546,39 @@ public class BotSkeleton implements ReplyConstants {
             if (f.exists() && f.length() != 0) {
                 try (BufferedReader br2 = new BufferedReader(new FileReader(f))) {
                     Type channelType = new TypeToken<Channel>() {}.getType();
-                    channelHandler.getChannels().add(gson.fromJson(br2, Channel.class));
+                    Channel c = gson.fromJson(br2, Channel.class);
+                    channelHandler.getChannels().add(c);
                 }
             }
 
             else {
-                String json = gson.toJson(new Channel(channel));
+                Channel c = new Channel(channel);
+                String json = gson.toJson(c);
                 try {
                     try (FileWriter writer = new FileWriter(channel + ".json")) {
                         writer.write(json);
-                        channelHandler.getChannels().add(new Channel(channel));
+                        channelHandler.getChannels().add(c);
+                        if (!c.getList().getChannel().equalsIgnoreCase(channel)) {
+                            c.getList().setChannel(channel);
+                        }
+                        if (!c.getRepeatList().getChannel().equalsIgnoreCase(channel)) {
+                            c.getRepeatList().setChannel(channel);
+                        }
                         buildJson(channel);
                     }
                 } catch (IOException e) {
 
                 }
             }
-
+            Channel c = channelHandler.getChannel(channel);
+            if (c != null) {
+                c.setBot(this);
+                c.getList().setChannel(channel);
+                c.getRepeatList().setChannel(channel);
+                c.getRepeatList().setBot(this);
+                c.getRepeatList().startAllTimers();
+            }
+            
         } catch (IOException e) {
 
         }
@@ -737,10 +759,13 @@ public class BotSkeleton implements ReplyConstants {
                         if (value.equals("1")) {
                             this.handleSpecial(channel, key, user);
                         }
+                        else {
+                            this.handleSpecial(channel, "not-subscriber", user);
+                        }
                         break;
                     case "turbo":
                         if (value.equals("1")) {
-                            this.handleSpecial(channel, value, user);
+                            this.handleSpecial(channel, key, user);
                         }
                         break;
                     case "user-type":
@@ -901,7 +926,8 @@ public class BotSkeleton implements ReplyConstants {
      * @param login The login of the user who joined the channel.
      * @param hostname The hostname of the user who joined the channel.
      */
-    protected void onJoin(String channel, String sender, String login, String hostname) {}
+    protected void onJoin(String channel, String sender, String login, String hostname) {
+    }
 
     /**
      * This method is called if JTV is trying to tell you something.
@@ -1020,6 +1046,9 @@ public class BotSkeleton implements ReplyConstants {
                     break;
                 case "subscriber":
                     if (c != null) c.addSubscriber(user);
+                    break;
+                case "not-subscriber":
+                    if (c != null) c.removeSubscriber(user);
                     break;
                 case "turbo":
                     channelHandler.getUser(user, true).setTurbo(true);
